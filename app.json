@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Couple Connection",
+    "slug": "couple-connection",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "coupleconnection",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FF6B9D"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FF6B9D"
+      },
+      "package": "com.coupleconnection.app",
+      "permissions": [
+        "VIBRATE",
+        "NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "color": "#FF6B9D"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
