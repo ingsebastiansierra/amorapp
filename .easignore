@@ -1,0 +1,10 @@
+# EAS Ignore
+node_modules/
+.expo/
+.git/
+*.log
+BUILD_APK.md
+SETUP.md
+README.md
+assets/ICONOS.md
+assets/iconos/

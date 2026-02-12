@@ -7,6 +7,9 @@ import { useEmotionalStore } from '@/core/store/useEmotionalStore';
 import { useAuthStore } from '@/core/store/useAuthStore';
 import { EmotionalState, EMOTIONAL_STATES } from '@/core/types/emotions';
 import { EmotionalStateSelector } from '@/shared/components/EmotionalStateSelector';
+import { AnimatedEmoji } from '@/shared/components/AnimatedEmoji';
+import { ImageAttachButton } from '@/shared/components/ImageAttachButton';
+import { PrivateImagesBadge } from '@/shared/components/PrivateImagesBadge';
 import { supabase } from '@/core/config/supabase';
 
 interface PartnerInfo {
@@ -42,6 +45,9 @@ export default function HomeScreen() {
     const pointerBounce = useRef(new Animated.Value(0)).current;
     const hintFade = useRef(new Animated.Value(0)).current;
     const hintAnimation = useRef<Animated.CompositeAnimation | null>(null);
+    const emojiScale = useRef(new Animated.Value(1)).current;
+    const emojiOpacity = useRef(new Animated.Value(1)).current;
+    const partnerEmojiScale = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         loadPartnerInfo();
@@ -49,21 +55,73 @@ export default function HomeScreen() {
         loadMyCurrentState();
         startHeartBeat();
         startProfilePulse();
-        checkForNewMessages();
+        // Carga inicial silenciosa (sin vibración ni modal)
+        checkForNewMessages(true);
 
         return () => {
             stopPolling();
         };
     }, []);
 
+    // Animar cuando cambia mi estado emocional
+    useEffect(() => {
+        if (myState) {
+            Animated.sequence([
+                Animated.parallel([
+                    Animated.timing(emojiScale, {
+                        toValue: 0,
+                        duration: 150,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(emojiOpacity, {
+                        toValue: 0,
+                        duration: 150,
+                        useNativeDriver: true,
+                    }),
+                ]),
+                Animated.parallel([
+                    Animated.spring(emojiScale, {
+                        toValue: 1,
+                        friction: 4,
+                        tension: 40,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(emojiOpacity, {
+                        toValue: 1,
+                        duration: 200,
+                        useNativeDriver: true,
+                    }),
+                ]),
+            ]).start();
+        }
+    }, [myState]);
+
+    // Animar cuando cambia el estado de la pareja
+    useEffect(() => {
+        if (partnerState) {
+            Animated.spring(partnerEmojiScale, {
+                toValue: 1.2,
+                friction: 3,
+                tension: 40,
+                useNativeDriver: true,
+            }).start(() => {
+                Animated.spring(partnerEmojiScale, {
+                    toValue: 1,
+                    friction: 5,
+                    useNativeDriver: true,
+                }).start();
+            });
+        }
+    }, [partnerState]);
+
     useEffect(() => {
         if (partner) {
-            console.log('Starting polling for partner:', partner.id);
+
             startPolling(partner.id);
 
-            // Polling para mensajes cada 5 segundos
+            // Polling para mensajes cada 5 segundos (silencioso)
             const messageInterval = setInterval(() => {
-                checkForNewMessages();
+                checkForNewMessages(true);
             }, 5000);
 
             return () => clearInterval(messageInterval);
@@ -78,7 +136,7 @@ export default function HomeScreen() {
         if (isSynced !== synced) {
             setIsSynced(synced);
             if (synced) {
-                console.log('¡Emociones sincronizadas!', myState);
+
                 // Verificar si esta emoción está bloqueada
                 checkEmotionLimit(myState);
                 // Iniciar animación de hint solo si no está bloqueada
@@ -144,7 +202,7 @@ export default function HomeScreen() {
     };
 
     const startHintAnimation = () => {
-        console.log('🎯 Iniciando animación de hint');
+
 
         // Fade in del hint
         Animated.timing(hintFade, {
@@ -172,7 +230,7 @@ export default function HomeScreen() {
     };
 
     const stopHintAnimation = () => {
-        console.log('🛑 Deteniendo animación de hint');
+
 
         // Detener la animación de rebote
         if (hintAnimation.current) {
@@ -190,14 +248,14 @@ export default function HomeScreen() {
         pointerBounce.setValue(0);
     };
 
-    const checkForNewMessages = async () => {
+    const checkForNewMessages = async (silent: boolean = false) => {
         if (!user || !partner) {
-            console.log('⚠️ No user or partner for checking messages');
+
             return;
         }
 
         try {
-            console.log('🔍 Checking for new messages...');
+
 
             // Obtener couple_id
             const { data: userData } = await supabase
@@ -207,11 +265,11 @@ export default function HomeScreen() {
                 .single();
 
             if (!userData?.couple_id) {
-                console.log('⚠️ No couple_id found');
+
                 return;
             }
 
-            console.log('👥 Couple ID:', userData.couple_id);
+
 
             // Buscar TODOS los mensajes no leídos
             const { data: messages, error } = await supabase
@@ -222,10 +280,10 @@ export default function HomeScreen() {
                 .eq('read', false)
                 .order('created_at', { ascending: false });
 
-            console.log('📬 Messages found:', messages?.length || 0, 'Error:', error);
+
 
             if (messages && messages.length > 0) {
-                console.log('💌 Unread messages:', messages);
+
 
                 // Guardar todos los mensajes
                 setReceivedMessages(messages.map(msg => ({
@@ -234,10 +292,12 @@ export default function HomeScreen() {
                     emotion: msg.synced_emotion,
                     created_at: msg.created_at
                 })));
+
+                const previousCount = unreadCount;
                 setUnreadCount(messages.length);
 
-                // Vibración solo si es la primera vez que detecta mensajes
-                if (unreadCount === 0 && messages.length > 0) {
+                // Vibración solo si hay NUEVOS mensajes (no en carga inicial)
+                if (!silent && previousCount < messages.length) {
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 }
             } else {
@@ -250,25 +310,25 @@ export default function HomeScreen() {
     };
 
     const openMessageNotification = () => {
-        console.log('🔔 Opening notifications, messages:', receivedMessages.length);
+
 
         if (receivedMessages.length > 0) {
             setShowNotification(true);
         } else {
-            console.log('⚠️ No messages to show');
+
         }
     };
 
     const closeNotificationWithoutReading = () => {
         // Solo cierra el modal, NO marca como leído ni limpia los mensajes
-        console.log('👁️ Closing notification without marking as read');
+
         setShowNotification(false);
         // Los mensajes y el badge permanecen
     };
 
     const markMessageAsRead = async (messageId: number) => {
         try {
-            console.log('✅ Marking message as read:', messageId);
+
 
             // Marcar como leído
             const { error } = await supabase
@@ -281,7 +341,7 @@ export default function HomeScreen() {
                 return;
             }
 
-            console.log('✅ Message marked as read successfully');
+
 
             // Remover el mensaje de la lista
             const updatedMessages = receivedMessages.filter(msg => msg.id !== messageId);
@@ -302,7 +362,7 @@ export default function HomeScreen() {
 
     const markAllAsRead = async () => {
         try {
-            console.log('✅ Marking all messages as read');
+
 
             const messageIds = receivedMessages.map(msg => msg.id);
 
@@ -317,7 +377,7 @@ export default function HomeScreen() {
                 return;
             }
 
-            console.log('✅ All messages marked as read');
+
 
             // Limpiar todo
             setReceivedMessages([]);
@@ -361,13 +421,13 @@ export default function HomeScreen() {
             }
 
             const count = messages?.length || 0;
-            console.log(`📊 Messages sent for ${emotion} in last 6h:`, count);
+
 
             setMessagesSentForEmotion(count);
             setEmotionBlocked(count >= 3);
 
             if (count >= 3) {
-                console.log('🚫 Emotion blocked - limit reached');
+
             }
         } catch (error) {
             console.error('Error checking emotion limit:', error);
@@ -405,7 +465,7 @@ export default function HomeScreen() {
                 .maybeSingle();
 
             if (data) {
-                console.log('My current state loaded:', data.state);
+
                 // Actualizar el store con mi estado actual
                 useEmotionalStore.setState({ myState: data.state as EmotionalState });
             }
@@ -415,12 +475,7 @@ export default function HomeScreen() {
     };
 
     const loadPartnerInfo = async () => {
-        if (!user) {
-            console.log('No user logged in');
-            return;
-        }
-
-        console.log('Loading partner info for user:', user.id);
+        if (!user) return;
 
         try {
             // Obtener mi couple_id
@@ -430,14 +485,7 @@ export default function HomeScreen() {
                 .eq('id', user.id)
                 .maybeSingle();
 
-            console.log('My data:', myData, 'Error:', myError);
-
-            if (!myData?.couple_id) {
-                console.log('No couple_id found');
-                return;
-            }
-
-            console.log('Couple ID:', myData.couple_id);
+            if (!myData?.couple_id) return;
 
             // Obtener la pareja
             const { data: coupleData, error: coupleError } = await supabase
@@ -446,19 +494,12 @@ export default function HomeScreen() {
                 .eq('id', myData.couple_id)
                 .maybeSingle();
 
-            console.log('Couple data:', coupleData, 'Error:', coupleError);
-
-            if (!coupleData) {
-                console.log('No couple data found');
-                return;
-            }
+            if (!coupleData) return;
 
             // Determinar el ID de la pareja
             const partnerId = coupleData.user1_id === user.id
                 ? coupleData.user2_id
                 : coupleData.user1_id;
-
-            console.log('Partner ID:', partnerId);
 
             // Obtener info de la pareja
             const { data: partnerData, error: partnerError } = await supabase
@@ -467,11 +508,8 @@ export default function HomeScreen() {
                 .eq('id', partnerId)
                 .maybeSingle();
 
-            console.log('Partner data:', partnerData, 'Error:', partnerError);
-
             if (partnerData) {
                 setPartner(partnerData);
-                console.log('Partner set successfully:', partnerData.name);
             }
         } catch (error) {
             console.error('Error loading partner:', error);
@@ -527,12 +565,12 @@ export default function HomeScreen() {
 
         // Verificar si se alcanzó el límite
         if (emotionBlocked) {
-            console.log('🚫 Cannot send - emotion limit reached');
+
             return;
         }
 
         try {
-            console.log('📤 Sending sync message...');
+
 
             // Obtener couple_id
             const { data: userData } = await supabase
@@ -542,11 +580,11 @@ export default function HomeScreen() {
                 .single();
 
             if (!userData?.couple_id) {
-                console.log('❌ No couple_id found');
+
                 return;
             }
 
-            console.log('👥 Sending to couple:', userData.couple_id);
+
             console.log('📝 Message data:', {
                 from: user.id,
                 to: partner.id,
@@ -571,7 +609,7 @@ export default function HomeScreen() {
                 throw error;
             }
 
-            console.log('✅ Message sent successfully:', data);
+
 
             // Actualizar contador
             setMessagesSentForEmotion(messagesSentForEmotion + 1);
@@ -615,10 +653,17 @@ export default function HomeScreen() {
                                     : '💕 Sin pareja vinculada'}
                             </Text>
                             {partner && partnerStateConfig ? (
-                                <View style={styles.emotionCard}>
-                                    <Text style={styles.emotionEmoji}>{partnerStateConfig.emoji}</Text>
+                                <Animated.View style={[
+                                    styles.emotionCard,
+                                    { transform: [{ scale: partnerEmojiScale }] }
+                                ]}>
+                                    <AnimatedEmoji
+                                        emoji={partnerStateConfig.emoji}
+                                        size={48}
+                                        animate={true}
+                                    />
                                     <Text style={styles.emotionLabel}>{partnerStateConfig.label}</Text>
-                                </View>
+                                </Animated.View>
                             ) : partner ? (
                                 <Text style={styles.noEmotionText}>Sin estado emocional</Text>
                             ) : (
@@ -713,10 +758,18 @@ export default function HomeScreen() {
                     <Text style={styles.sectionLabel}>¿Cómo te sientes?</Text>
                     <Pressable onPress={() => setShowStateSelector(true)} style={styles.myEmotionCard}>
                         {myStateConfig ? (
-                            <>
-                                <Text style={styles.myEmotionEmoji}>{myStateConfig.emoji}</Text>
+                            <Animated.View style={{
+                                transform: [{ scale: emojiScale }],
+                                opacity: emojiOpacity,
+                                alignItems: 'center',
+                            }}>
+                                <AnimatedEmoji
+                                    emoji={myStateConfig.emoji}
+                                    size={56}
+                                    animate={true}
+                                />
                                 <Text style={styles.myEmotionLabel}>{myStateConfig.label}</Text>
-                            </>
+                            </Animated.View>
                         ) : (
                             <Text style={styles.selectEmotionText}>Toca para seleccionar</Text>
                         )}
@@ -780,21 +833,33 @@ export default function HomeScreen() {
                                     <Text style={styles.syncInputLabel}>
                                         Mensaje ({syncMessage.length}/50)
                                     </Text>
-                                    <TextInput
-                                        style={styles.syncInput}
-                                        placeholder="Escribe algo especial..."
-                                        placeholderTextColor="#999"
-                                        value={syncMessage}
-                                        onChangeText={(text) => {
-                                            if (text.length <= 50) {
-                                                setSyncMessage(text);
-                                            }
-                                        }}
-                                        maxLength={50}
-                                        multiline
-                                        numberOfLines={2}
-                                        autoFocus
-                                    />
+                                    <View style={styles.inputRow}>
+                                        <TextInput
+                                            style={styles.syncInput}
+                                            placeholder="Escribe algo especial..."
+                                            placeholderTextColor="#999"
+                                            value={syncMessage}
+                                            onChangeText={(text) => {
+                                                if (text.length <= 50) {
+                                                    setSyncMessage(text);
+                                                }
+                                            }}
+                                            maxLength={50}
+                                            multiline
+                                            numberOfLines={2}
+                                            autoFocus
+                                        />
+                                        {partner && (
+                                            <ImageAttachButton
+                                                toUserId={partner.id}
+                                                onSent={() => {
+                                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                                }}
+                                                size={24}
+                                                color="#007AFF"
+                                            />
+                                        )}
+                                    </View>
                                 </View>
 
                                 <Pressable
@@ -965,6 +1030,17 @@ export default function HomeScreen() {
                                 <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
                             </View>
                         )}
+                    </Pressable>
+                </Animated.View>
+
+                {/* Botón de imágenes privadas flotante */}
+                <Animated.View style={styles.imagesButtonContainer}>
+                    <Pressable
+                        style={styles.imagesButton}
+                        onPress={() => router.push('/(app)/private-images')}
+                    >
+                        <Text style={styles.imagesIcon}>📸</Text>
+                        <PrivateImagesBadge />
                     </Pressable>
                 </Animated.View>
 
@@ -1160,6 +1236,29 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: 'bold',
     },
+    // Botón de imágenes privadas flotante
+    imagesButtonContainer: {
+        position: 'absolute',
+        bottom: 80,
+        left: 20,
+        zIndex: 10,
+    },
+    imagesButton: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#FF6B9D',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    imagesIcon: {
+        fontSize: 28,
+    },
     sectionLabel: {
         fontSize: 14,
         color: '#FFF',
@@ -1349,7 +1448,13 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         fontWeight: '600',
     },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+    },
     syncInput: {
+        flex: 1,
         backgroundColor: '#F7FAFC',
         borderRadius: 12,
         borderWidth: 2,

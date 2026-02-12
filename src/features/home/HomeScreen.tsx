@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MotiView } from 'moti';
 import { HeartButton } from '@shared/components/HeartButton';
 import { EmotionalStateSelector } from '@shared/components/EmotionalStateSelector';
 import { useEmotionalStore } from '@core/store/useEmotionalStore';
@@ -12,11 +11,11 @@ export const HomeScreen: React.FC = () => {
     const [showStateSelector, setShowStateSelector] = useState(false);
 
     const handleHeartPress = () => {
-        console.log('Heart tap');
+
     };
 
     const handleHeartLongPress = (duration: number) => {
-        console.log('Heart long press:', duration);
+
     };
 
     const handleStateSelect = async (state: EmotionalState) => {
@@ -34,17 +33,13 @@ export const HomeScreen: React.FC = () => {
         >
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
-                    <MotiView
-                        from={{ opacity: 0, translateY: -20 }}
-                        animate={{ opacity: 1, translateY: 0 }}
-                        transition={{ type: 'timing', duration: 600 }}
-                    >
+                    <Animated.View style={{ opacity: 1 }}>
                         <Text style={styles.partnerStatus}>
                             {partnerStateConfig
                                 ? `${partnerStateConfig.emoji} ${partnerStateConfig.label}`
                                 : '🤍 Esperando...'}
                         </Text>
-                    </MotiView>
+                    </Animated.View>
                 </View>
 
                 <View style={styles.centerContent}>

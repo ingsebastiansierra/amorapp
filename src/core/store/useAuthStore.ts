@@ -11,6 +11,8 @@ interface AuthState {
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
   enterDemoMode: () => void;
+  resetPassword: (email: string) => Promise<{ error: any }>;
+  verifyOtpAndResetPassword: (email: string, token: string, newPassword: string) => Promise<{ error: any }>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -87,5 +89,46 @@ export const useAuthStore = create<AuthState>((set) => ({
       user: { id: 'demo-user', email: 'demo@app.com' } as User,
       demoMode: true 
     });
+  },
+
+  resetPassword: async (email: string) => {
+    if (isDemoMode) {
+      return { error: { message: 'Configura Supabase primero. Ver SETUP.md' } };
+    }
+    
+    // Enviar código OTP de 6 dígitos al email
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false, // No crear usuario si no existe
+        emailRedirectTo: undefined, // No enviar enlace, solo código
+      }
+    });
+    
+    return { error };
+  },
+
+  verifyOtpAndResetPassword: async (email: string, token: string, newPassword: string) => {
+    if (isDemoMode) {
+      return { error: { message: 'Configura Supabase primero. Ver SETUP.md' } };
+    }
+
+    // Verificar el código OTP
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email',
+    });
+
+    if (verifyError) {
+      return { error: verifyError };
+    }
+
+    // Cambiar la contraseña
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    return { error: updateError };
   },
 }));

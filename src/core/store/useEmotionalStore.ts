@@ -11,7 +11,7 @@ interface EmotionalStore {
   stopPolling: () => void;
 }
 
-let pollingInterval: NodeJS.Timeout | null = null;
+let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
 export const useEmotionalStore = create<EmotionalStore>((set, get) => ({
   myState: null,
@@ -31,7 +31,6 @@ export const useEmotionalStore = create<EmotionalStore>((set, get) => ({
   },
 
   fetchPartnerState: async (partnerId: string) => {
-    console.log('Fetching partner state for:', partnerId);
     const { data, error } = await supabase
       .from('emotional_states')
       .select('state')
@@ -39,8 +38,6 @@ export const useEmotionalStore = create<EmotionalStore>((set, get) => ({
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-
-    console.log('Partner state data:', data, 'Error:', error);
 
     if (data) {
       set({ partnerState: data.state as EmotionalState });

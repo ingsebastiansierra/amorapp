@@ -48,8 +48,11 @@ export default function RegisterScreen() {
         <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.content}>
-                    <Text style={styles.title}>💕 Crear Cuenta</Text>
-                    <Text style={styles.subtitle}>Únete a Couple Connection</Text>
+                    <View style={styles.logoContainer}>
+                        <Text style={styles.logo}>💕</Text>
+                    </View>
+                    <Text style={styles.title}>Crear Cuenta</Text>
+                    <Text style={styles.subtitle}>Únete a Palpitos</Text>
 
                     <TextInput
                         style={styles.input}
@@ -140,12 +143,25 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         padding: 24,
     },
+    logoContainer: {
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    logo: {
+        fontSize: 80,
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 4 },
+        textShadowRadius: 8,
+    },
     title: {
-        fontSize: 36,
+        fontSize: 42,
         fontWeight: 'bold',
         color: '#FFF',
         textAlign: 'center',
         marginBottom: 8,
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
     },
     subtitle: {
         fontSize: 16,

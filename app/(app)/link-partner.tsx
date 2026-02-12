@@ -38,7 +38,7 @@ export default function LinkPartnerScreen() {
                 // Usar los primeros 8 caracteres del UUID como código
                 const code = data.id.substring(0, 8).toUpperCase();
                 setMyCode(code);
-                console.log('Mi código:', code, 'UUID completo:', data.id);
+
             }
         } catch (error) {
             console.error('Error loading code:', error);
@@ -87,7 +87,7 @@ export default function LinkPartnerScreen() {
             const { data: partners, error: searchError } = await supabase
                 .rpc('search_user_by_code', { code_prefix: partnerCode.toLowerCase() });
 
-            console.log('Búsqueda de pareja:', { partnerCode, partners, searchError });
+
 
             if (searchError) {
                 console.error('Error buscando pareja:', searchError);
@@ -125,7 +125,7 @@ export default function LinkPartnerScreen() {
                 throw coupleError;
             }
 
-            console.log('Pareja creada:', couple);
+
 
             // Actualizar ambos usuarios con el couple_id
             const { error: updateError } = await supabase

@@ -13,7 +13,6 @@ module.exports = function (api) {
             [
                 'module-resolver',
                 {
-                    root: ['./src'],
                     alias: {
                         '@': './src',
                         '@core': './src/core',
@@ -22,6 +21,8 @@ module.exports = function (api) {
                     },
                 },
             ],
+            'react-native-worklets-core/plugin',
+            'react-native-reanimated/plugin',
         ],
     };
 };

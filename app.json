@@ -1,39 +1,90 @@
 {
   "expo": {
-    "name": "Couple Connection",
-    "slug": "couple-connection",
+    "name": "Palpitos",
+    "slug": "palpitos",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "scheme": "coupleconnection",
+    "scheme": "palpitos",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#FF6B9D"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.palpitos.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Palpitos necesita acceso a tu cámara para que puedas tomar fotos y enviarlas a tu pareja.",
+        "NSPhotoLibraryUsageDescription": "Palpitos necesita acceso a tus fotos para que puedas enviar imágenes privadas a tu pareja.",
+        "NSPhotoLibraryAddUsageDescription": "Palpitos necesita permiso para guardar fotos en tu galería.",
+        "NSMicrophoneUsageDescription": "Palpitos necesita acceso al micrófono para grabar mensajes de voz.",
+        "NSUserNotificationsUsageDescription": "Palpitos te enviará notificaciones cuando tu pareja te envíe mensajes o imágenes."
+      }
+    },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FF6B9D"
       },
-      "package": "com.coupleconnection.app",
+      "package": "com.palpitos.app",
+      "versionCode": 1,
       "permissions": [
         "VIBRATE",
-        "NOTIFICATIONS"
+        "NOTIFICATIONS",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "RECORD_AUDIO"
       ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0"
+          }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Palpitos necesita acceso a tus fotos para que puedas enviar imágenes privadas a tu pareja.",
+          "cameraPermission": "Palpitos necesita acceso a tu cámara para que puedas tomar fotos y enviarlas a tu pareja.",
+          "microphonePermission": "Palpitos necesita acceso al micrófono para grabar mensajes de voz."
+        }
+      ],
+      [
         "expo-notifications",
         {
-          "color": "#FF6B9D"
+          "icon": "./assets/notification-icon.png",
+          "color": "#FF6B9D",
+          "sounds": [],
+          "androidMode": "default",
+          "androidCollapsedTitle": "Nuevo mensaje de tu pareja ❤️"
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "abcd9d33-058f-4176-957c-ae4f785bf3d4"
+      }
     }
   }
 }
