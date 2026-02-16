@@ -27,7 +27,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      // Si hay error de refresh token, limpiar sesión
+      if (error?.message?.includes('Refresh Token')) {
+        await supabase.auth.signOut();
+        set({ user: null, loading: false });
+        return;
+      }
+      
       set({ user: session?.user ?? null, loading: false });
 
       supabase.auth.onAuthStateChange((_event, session) => {

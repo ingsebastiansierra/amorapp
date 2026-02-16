@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, Pressable, Modal, Animated, TextInput, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEmotionalStore } from '@/core/store/useEmotionalStore';
 import { useAuthStore } from '@/core/store/useAuthStore';
 import { EmotionalState, EMOTIONAL_STATES } from '@/core/types/emotions';
@@ -642,197 +642,212 @@ export default function HomeScreen() {
     const partnerStateConfig = partnerState ? EMOTIONAL_STATES[partnerState] : null;
 
     return (
-        <View style={styles.container}>
+        <LinearGradient
+            colors={myStateConfig?.gradient || ['#667eea', '#764ba2']}
+            style={styles.container}
+        >
             <SafeAreaView style={styles.safeArea}>
-                {/* Header simple */}
-                <View style={styles.header}>
-                    <Pressable onPress={() => setShowMenu(true)}>
-                        {myProfile?.avatar_url ? (
-                            <Image
-                                key={myProfile.avatar_url}
-                                source={{ uri: avatarService.getAvatarUrl(myProfile.avatar_url) || undefined }}
-                                style={styles.headerAvatar}
-                                onError={(error) => console.log('Error loading avatar:', error.nativeEvent.error)}
-                            />
-                        ) : (
-                            <View style={styles.headerAvatarPlaceholder}>
-                                <Ionicons name="heart" size={20} color="#EB477E" />
-                            </View>
+                {/* Header con botón de perfil integrado */}
+                <View style={styles.headerBar}>
+                    <Animated.View style={{ transform: [{ scale: profilePulse }] }}>
+                        <Pressable style={styles.headerProfileButton} onPress={() => setShowMenu(true)}>
+                            {myProfile?.avatar_url ? (
+                                <Image
+                                    key={myProfile.avatar_url}
+                                    source={{ uri: avatarService.getAvatarUrl(myProfile.avatar_url) || undefined }}
+                                    style={styles.headerProfileImage}
+                                    onError={(error) => console.log('Error loading avatar:', error.nativeEvent.error)}
+                                />
+                            ) : (
+                                <Text style={styles.headerProfileIcon}>
+                                    {myProfile?.gender === 'female' ? '👩' : '👨'}
+                                </Text>
+                            )}
+                        </Pressable>
+                    </Animated.View>
+
+                    <View style={styles.headerCenter}>
+                        {myProfile && (
+                            <Text style={styles.headerName}>
+                                Hola, {myProfile.name.split(' ')[0]}
+                            </Text>
                         )}
-                    </Pressable>
-                    <Text style={styles.headerTitle}>US</Text>
-                    <Pressable onPress={openMessageNotification} style={{ position: 'relative' }}>
-                        <Ionicons name="notifications" size={26} color="#181113" />
+                    </View>
+
+                    <Pressable
+                        style={styles.headerNotificationButton}
+                        onPress={openMessageNotification}
+                    >
+                        <Text style={styles.headerNotificationIcon}>💌</Text>
                         {unreadCount > 0 && (
-                            <View style={styles.badge}>
-                                <Text style={styles.badgeText}>{unreadCount}</Text>
+                            <View style={styles.headerNotificationBadge}>
+                                <Text style={styles.headerNotificationBadgeText}>{unreadCount}</Text>
                             </View>
                         )}
                     </Pressable>
                 </View>
 
-                <ScrollView
-                    style={styles.scrollView}
-                    contentContainerStyle={styles.content}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {/* Cards lado a lado */}
-                    <View style={styles.cardsRow}>
-                        {/* Card HIM/HER - Partner */}
-                        <Pressable
-                            style={[styles.moodCard, styles.cardBlue]}
-                            onPress={() => partner && router.push({
-                                pathname: '/(app)/partner-profile',
-                                params: { partnerId: partner.id }
-                            })}
-                            disabled={!partner}
-                        >
-                            <Text style={styles.cardLabel}>
-                                {partner?.gender === 'female' ? 'HER' : 'HIM'}
-                            </Text>
-                            <View style={styles.cardContent}>
-                                {partner && partnerStateConfig ? (
-                                    <Animated.View style={{ transform: [{ scale: partnerEmojiScale }] }}>
-                                        <AnimatedEmoji
-                                            emoji={partnerStateConfig.emoji}
-                                            size={80}
-                                            animate={true}
-                                        />
-                                    </Animated.View>
-                                ) : (
-                                    <Text style={styles.emojiLarge}>😶</Text>
-                                )}
-                                <Text style={styles.moodText}>
-                                    {partner && partnerStateConfig ? partnerStateConfig.label : 'Sin estado'}
-                                </Text>
-                                <Text style={styles.timeText}>
-                                    {partner && partnerStateConfig ? 'UPDATED 2M AGO' : ''}
-                                </Text>
-                            </View>
-                        </Pressable>
+                {/* Sección de la pareja - Rediseñada */}
+                <View style={styles.partnerSection}>
+                    <Pressable
+                        onPress={() => partner && router.push({
+                            pathname: '/(app)/partner-profile',
+                            params: { partnerId: partner.id }
+                        })}
+                        disabled={!partner}
+                        style={styles.partnerCard}
+                    >
+                        <View style={styles.partnerCardHeader}>
+                            <Text style={styles.partnerCardLabel}>Tu pareja</Text>
+                        </View>
 
-                        {/* Card HIM/HER - Yo */}
-                        <Pressable
-                            style={[styles.moodCard, styles.cardPink]}
-                            onPress={() => setShowStateSelector(true)}
-                        >
-                            <Text style={styles.cardLabel}>
-                                {myProfile?.gender === 'female' ? 'HER' : 'HIM'}
+                        <View style={styles.partnerCardContent}>
+                            <Text style={styles.partnerName}>
+                                {partner
+                                    ? `${partner.gender === 'female' ? '👩' : '👨'} ${partner.name}`
+                                    : '💕 Sin pareja vinculada'}
                             </Text>
-                            <View style={styles.cardContent}>
-                                {myStateConfig ? (
-                                    <Animated.View style={{
-                                        transform: [{ scale: emojiScale }],
-                                        opacity: emojiOpacity,
-                                    }}>
-                                        <AnimatedEmoji
-                                            emoji={myStateConfig.emoji}
-                                            size={80}
-                                            animate={true}
-                                        />
-                                    </Animated.View>
-                                ) : (
-                                    <Text style={styles.emojiLarge}>😊</Text>
-                                )}
-                                <Text style={styles.moodText}>
-                                    {myStateConfig ? myStateConfig.label : 'Tap to select'}
-                                </Text>
-                                <Text style={styles.timeText}>
-                                    {myStateConfig ? 'UPDATED NOW' : ''}
-                                </Text>
-                            </View>
-                        </Pressable>
-                    </View>
 
-                    {/* Botón IN SYNC flotante */}
-                    {isSynced && partner && (
-                        <View style={styles.syncButtonContainer}>
+                            {partner && partnerStateConfig ? (
+                                <Animated.View style={[
+                                    styles.emotionCard,
+                                    { transform: [{ scale: partnerEmojiScale }] }
+                                ]}>
+                                    <AnimatedEmoji
+                                        emoji={partnerStateConfig.emoji}
+                                        size={56}
+                                        animate={true}
+                                    />
+                                    <Text style={styles.emotionLabel}>{partnerStateConfig.label}</Text>
+                                </Animated.View>
+                            ) : partner ? (
+                                <View style={styles.noEmotionCard}>
+                                    <Text style={styles.noEmotionEmoji}>😶</Text>
+                                    <Text style={styles.noEmotionText}>Sin estado emocional</Text>
+                                </View>
+                            ) : (
+                                <View style={styles.noEmotionCard}>
+                                    <Text style={styles.noEmotionEmoji}>💑</Text>
+                                    <Text style={styles.noEmotionText}>Vincula a tu pareja para comenzar</Text>
+                                </View>
+                            )}
+                        </View>
+                    </Pressable>
+                </View>
+
+                {/* Centro - Conexión mejorada */}
+                <View style={styles.centerSection}>
+                    {isSynced && partner ? (
+                        <View style={styles.syncedWrapper}>
                             <Pressable
-                                style={[styles.syncButton, emotionBlocked && styles.syncButtonDisabled]}
                                 onPress={() => {
                                     if (!emotionBlocked) {
                                         setShowSyncModal(true);
+                                        stopHintAnimation();
                                     }
                                 }}
                                 disabled={emotionBlocked}
                             >
-                                <Animated.View style={[styles.syncButtonInner, { transform: [{ scale: heartScale }] }]}>
-                                    <Ionicons name="sync" size={16} color="#FFF" />
-                                    <Text style={styles.syncText}>
-                                        {emotionBlocked ? 'LIMIT REACHED' : 'IN SYNC'}
-                                    </Text>
+                                <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                                    <View style={[
+                                        styles.syncedContainer,
+                                        emotionBlocked && styles.syncedContainerBlocked
+                                    ]}>
+                                        <Text style={styles.syncedEmoji}>
+                                            {emotionBlocked ? '🔒' : '✨💕✨'}
+                                        </Text>
+                                        <Text style={styles.syncedText}>
+                                            {emotionBlocked ? 'Límite alcanzado' : '¡Sincronizados!'}
+                                        </Text>
+                                        {emotionBlocked && (
+                                            <Text style={styles.syncedBlockedText}>
+                                                Cambia de emoción para continuar
+                                            </Text>
+                                        )}
+                                        {!emotionBlocked && messagesSentForEmotion > 0 && (
+                                            <Text style={styles.syncedCountText}>
+                                                {messagesSentForEmotion}/3 mensajes enviados
+                                            </Text>
+                                        )}
+                                    </View>
                                 </Animated.View>
                             </Pressable>
+
+                            {!emotionBlocked && (
+                                <Animated.View
+                                    style={[
+                                        styles.hintContainer,
+                                        {
+                                            opacity: hintFade,
+                                            transform: [{ translateY: pointerBounce }]
+                                        }
+                                    ]}
+                                >
+                                    <Text style={styles.hintPointer}>👆</Text>
+                                    <View style={styles.hintBubble}>
+                                        <Text style={styles.hintText}>¡Dale click!</Text>
+                                    </View>
+                                </Animated.View>
+                            )}
                         </View>
+                    ) : (
+                        <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                            <Pressable onPress={handleHeartPress} style={styles.heartContainer}>
+                                <View style={styles.connectionCard}>
+                                    <Text style={styles.connectionEmoji}>💕</Text>
+                                    <Text style={styles.connectionText}>
+                                        {partner ? 'Conectados' : 'Esperando conexión'}
+                                    </Text>
+                                </View>
+                            </Pressable>
+                        </Animated.View>
                     )}
+                </View>
 
-                    {/* Mensaje de sincronización */}
-                    {isSynced && partner && (
-                        <View style={styles.syncMessage}>
-                            <Text style={styles.syncMessageText}>
-                                You both are feeling the same way!
-                            </Text>
-                            <Text style={styles.syncStreak}>
-                                Relationship streak: 12 days
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* Botón Change My Mood */}
-                    <Pressable
-                        style={styles.changeMoodBtn}
-                        onPress={() => setShowStateSelector(true)}
-                    >
-                        <Ionicons name="happy-outline" size={24} color="#FFF" />
-                        <Text style={styles.changeMoodText}>Change My Mood</Text>
-                    </Pressable>
-
-                    {/* Upcoming Date Card */}
-                    <Pressable style={styles.upcomingCard}>
-                        <View style={styles.upcomingLeft}>
-                            <View style={styles.upcomingIconBox}>
-                                <Ionicons name="calendar-outline" size={22} color="#EB477E" />
-                            </View>
-                            <View>
-                                <Text style={styles.upcomingTitle}>Upcoming Date</Text>
-                                <Text style={styles.upcomingSubtitle}>Friday, 7:00 PM • Sushi Night</Text>
-                            </View>
-                        </View>
-                        <Ionicons name="chevron-forward" size={22} color="#D1D5DB" />
-                    </Pressable>
-                </ScrollView>
-
-                {/* Bottom Navigation */}
-                <View style={styles.bottomNav}>
-                    <Pressable style={styles.navItem}>
-                        <Ionicons name="home" size={26} color="#EB477E" />
-                        <Text style={[styles.navLabel, styles.navLabelActive]}>Home</Text>
-                    </Pressable>
-
-                    <Pressable style={styles.navItem} onPress={openMessageNotification}>
-                        <Ionicons name="chatbubbles" size={26} color="#6B7280" />
-                        <Text style={styles.navLabel}>Messages</Text>
-                        {unreadCount > 0 && (
-                            <View style={styles.navBadge}>
-                                <Text style={styles.navBadgeText}>{unreadCount}</Text>
+                {/* Footer - Mi estado rediseñado */}
+                <View style={styles.mySection}>
+                    <Text style={styles.mySectionLabel}>¿Cómo te sientes?</Text>
+                    <Pressable onPress={() => setShowStateSelector(true)} style={styles.myEmotionCard}>
+                        {myStateConfig ? (
+                            <Animated.View style={{
+                                transform: [{ scale: emojiScale }],
+                                opacity: emojiOpacity,
+                                alignItems: 'center',
+                            }}>
+                                <AnimatedEmoji
+                                    emoji={myStateConfig.emoji}
+                                    size={64}
+                                    animate={true}
+                                />
+                                <Text style={styles.myEmotionLabel}>{myStateConfig.label}</Text>
+                            </Animated.View>
+                        ) : (
+                            <View style={styles.selectEmotionContainer}>
+                                <Text style={styles.selectEmotionEmoji}>😊</Text>
+                                <Text style={styles.selectEmotionText}>Toca para seleccionar</Text>
                             </View>
                         )}
                     </Pressable>
+                </View>
 
-                    <View style={styles.navItemCenter}>
-                        <Pressable style={styles.navCenterBtn}>
-                            <Ionicons name="heart" size={28} color="#FFF" />
-                        </Pressable>
-                    </View>
-
-                    <Pressable style={styles.navItem} onPress={() => router.push('/(app)/private-images')}>
-                        <Ionicons name="images" size={26} color="#6B7280" />
-                        <Text style={styles.navLabel}>Gallery</Text>
+                {/* Barra de acciones rápidas */}
+                <View style={styles.quickActionsBar}>
+                    <Pressable
+                        style={styles.quickActionButton}
+                        onPress={() => router.push('/(app)/private-images')}
+                    >
+                        <Text style={styles.quickActionIcon}>📸</Text>
+                        <Text style={styles.quickActionLabel}>Fotos</Text>
+                        <PrivateImagesBadge />
                     </Pressable>
 
-                    <Pressable style={styles.navItem} onPress={() => setShowMenu(true)}>
-                        <Ionicons name="person-circle" size={26} color="#6B7280" />
-                        <Text style={styles.navLabel}>Profile</Text>
+                    <Pressable
+                        style={styles.quickActionButton}
+                        onPress={() => router.push('/(app)/voice-notes')}
+                    >
+                        <Text style={styles.quickActionIcon}>🎤</Text>
+                        <Text style={styles.quickActionLabel}>Notas</Text>
+                        <VoiceNotesBadge />
                     </Pressable>
                 </View>
 
@@ -844,7 +859,10 @@ export default function HomeScreen() {
                     onRequestClose={() => setShowStateSelector(false)}
                 >
                     <View style={styles.stateSelectorOverlay}>
-                        <View style={[styles.stateSelectorContainer, { backgroundColor: '#EB477E' }]}>
+                        <LinearGradient
+                            colors={myStateConfig?.gradient || ['#667eea', '#764ba2']}
+                            style={styles.stateSelectorContainer}
+                        >
                             <SafeAreaView style={styles.stateSelectorSafeArea}>
                                 {/* Botón de cerrar */}
                                 <Pressable
@@ -859,7 +877,7 @@ export default function HomeScreen() {
                                     onSelectState={handleStateSelect}
                                 />
                             </SafeAreaView>
-                        </View>
+                        </LinearGradient>
                     </View>
                 </Modal>
 
@@ -977,12 +995,12 @@ export default function HomeScreen() {
                                 setShowMenu(false);
                                 router.push('/(app)/profile');
                             }}>
-                                <Ionicons name="person-circle-outline" size={28} color="#667eea" style={{ marginRight: 12 }} />
+                                <Text style={styles.menuItemIcon}>👤</Text>
                                 <Text style={styles.menuItemText}>Ver Perfil Completo</Text>
                             </Pressable>
 
                             <Pressable style={styles.menuItem} onPress={() => setShowMenu(false)}>
-                                <Ionicons name="settings-outline" size={28} color="#667eea" style={{ marginRight: 12 }} />
+                                <Text style={styles.menuItemIcon}>⚙️</Text>
                                 <Text style={styles.menuItemText}>Configuración</Text>
                             </Pressable>
 
@@ -990,7 +1008,7 @@ export default function HomeScreen() {
                                 setShowMenu(false);
                                 router.push('/(app)/link-partner');
                             }}>
-                                <Ionicons name="heart-circle-outline" size={28} color="#667eea" style={{ marginRight: 12 }} />
+                                <Text style={styles.menuItemIcon}>💑</Text>
                                 <Text style={styles.menuItemText}>Vincular Pareja</Text>
                             </Pressable>
 
@@ -1001,7 +1019,7 @@ export default function HomeScreen() {
                                     handleSignOut();
                                 }}
                             >
-                                <Ionicons name="log-out-outline" size={28} color="#E53E3E" style={{ marginRight: 12 }} />
+                                <Text style={styles.menuItemIcon}>🚪</Text>
                                 <Text style={[styles.menuItemText, styles.menuItemTextDanger]}>
                                     Cerrar Sesión
                                 </Text>
@@ -1084,299 +1102,16 @@ export default function HomeScreen() {
                 </Modal>
 
             </SafeAreaView>
-        </View>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8F6F6',
     },
     safeArea: {
         flex: 1,
-    },
-    // Header
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 24,
-        paddingTop: 48,
-        paddingBottom: 16,
-        backgroundColor: '#FFF',
-    },
-    headerAvatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-    },
-    headerAvatarPlaceholder: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#F3F4F6',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    headerIcon: {
-        fontSize: 24,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        letterSpacing: 2,
-        color: '#181113',
-    },
-    badge: {
-        position: 'absolute',
-        top: -4,
-        right: -4,
-        backgroundColor: '#EB477E',
-        borderRadius: 10,
-        minWidth: 18,
-        height: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    badgeText: {
-        color: '#FFF',
-        fontSize: 10,
-        fontWeight: 'bold',
-    },
-    // Content
-    scrollView: {
-        flex: 1,
-    },
-    content: {
-        paddingHorizontal: 16,
-    },
-    // Cards Row
-    cardsRow: {
-        flexDirection: 'row',
-        gap: 12,
-        height: 400,
-        marginTop: 16,
-        marginBottom: -30,
-    },
-    moodCard: {
-        flex: 1,
-        borderRadius: 32,
-        padding: 20,
-        position: 'relative',
-    },
-    cardBlue: {
-        backgroundColor: '#E0F2FF',
-    },
-    cardPink: {
-        backgroundColor: '#FCE7F3',
-        borderWidth: 1,
-        borderColor: 'rgba(235, 71, 126, 0.2)',
-    },
-    cardLabel: {
-        position: 'absolute',
-        top: 16,
-        left: 16,
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 1.5,
-        color: '#6B7280',
-        opacity: 0.6,
-    },
-    cardContent: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    emojiLarge: {
-        fontSize: 80,
-    },
-    moodText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#6B7280',
-        marginTop: 16,
-    },
-    timeText: {
-        fontSize: 10,
-        color: '#9CA3AF',
-        marginTop: 4,
-        letterSpacing: 0.5,
-    },
-    // Sync Button
-    syncButtonContainer: {
-        alignItems: 'center',
-        marginTop: -20,
-        marginBottom: 24,
-        zIndex: 10,
-    },
-    syncButton: {
-        backgroundColor: '#EB477E',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 20,
-        shadowColor: '#EB477E',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
-    },
-    syncButtonDisabled: {
-        backgroundColor: '#9CA3AF',
-        opacity: 0.6,
-    },
-    syncButtonInner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    syncIcon: {
-        fontSize: 14,
-    },
-    syncText: {
-        color: '#FFF',
-        fontSize: 12,
-        fontWeight: '700',
-        letterSpacing: 1,
-    },
-    // Sync Message
-    syncMessage: {
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    syncMessageText: {
-        fontSize: 14,
-        color: '#6B7280',
-        marginBottom: 4,
-    },
-    syncStreak: {
-        fontSize: 14,
-        color: '#EB477E',
-        fontWeight: '600',
-    },
-    // Change Mood Button
-    changeMoodBtn: {
-        backgroundColor: '#EB477E',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 16,
-        borderRadius: 24,
-        marginBottom: 16,
-        shadowColor: '#EB477E',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
-    },
-    changeMoodIcon: {
-        fontSize: 24,
-        marginRight: 12,
-    },
-    changeMoodText: {
-        color: '#FFF',
-        fontSize: 17,
-        fontWeight: '700',
-    },
-    // Upcoming Card
-    upcomingCard: {
-        backgroundColor: '#F8F6F6',
-        borderRadius: 16,
-        padding: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 80,
-    },
-    upcomingLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    upcomingIconBox: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#FFF',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    upcomingIcon: {
-        fontSize: 20,
-    },
-    upcomingTitle: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#181113',
-    },
-    upcomingSubtitle: {
-        fontSize: 10,
-        color: '#6B7280',
-    },
-    chevron: {
-        fontSize: 24,
-        color: '#D1D5DB',
-    },
-    // Bottom Navigation
-    bottomNav: {
-        flexDirection: 'row',
-        backgroundColor: '#FFF',
-        paddingVertical: 8,
-        paddingHorizontal: 8,
-        borderTopWidth: 1,
-        borderTopColor: '#F4F0F2',
-        paddingBottom: 20,
-    },
-    navItem: {
-        flex: 1,
-        alignItems: 'center',
-        paddingVertical: 8,
-    },
-    navItemCenter: {
-        flex: 1,
-        alignItems: 'center',
-        marginTop: -24,
-    },
-    navLabel: {
-        fontSize: 10,
-        color: '#6B7280',
-        fontWeight: '500',
-        marginTop: 4,
-    },
-    navLabelActive: {
-        color: '#EB477E',
-        fontWeight: '700',
-    },
-    navBadge: {
-        position: 'absolute',
-        top: 4,
-        right: '30%',
-        backgroundColor: '#EB477E',
-        borderRadius: 8,
-        minWidth: 16,
-        height: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    navBadgeText: {
-        color: '#FFF',
-        fontSize: 9,
-        fontWeight: 'bold',
-    },
-    navCenterBtn: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#EB477E',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#EB477E',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
-        borderWidth: 4,
-        borderColor: '#FFF',
     },
     // Header Bar
     headerBar: {
@@ -2005,6 +1740,10 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         backgroundColor: '#F7FAFC',
         marginBottom: 12,
+    },
+    menuItemIcon: {
+        fontSize: 24,
+        marginRight: 12,
     },
     menuItemText: {
         fontSize: 16,

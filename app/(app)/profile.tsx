@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/core/store/useAuthStore';
 import { supabase } from '@/core/config/supabase';
+import { AvatarPicker } from '@/shared/components/AvatarPicker';
 
 interface UserProfile {
     name: string;
@@ -11,6 +12,7 @@ interface UserProfile {
     gender: string;
     birth_date: string;
     age: number;
+    avatar_url: string | null;
 }
 
 export default function ProfileScreen() {
@@ -29,7 +31,7 @@ export default function ProfileScreen() {
         try {
             const { data, error } = await supabase
                 .from('users')
-                .select('name, email, gender, birth_date')
+                .select('name, gender, birth_date, avatar_url')
                 .eq('id', user.id)
                 .maybeSingle();
 
@@ -47,6 +49,7 @@ export default function ProfileScreen() {
 
                 setProfile({
                     ...data,
+                    email: user.email || '', // Usar el email del usuario autenticado
                     age,
                 });
             } else {
@@ -57,6 +60,7 @@ export default function ProfileScreen() {
                     gender: 'male',
                     birth_date: '',
                     age: 0,
+                    avatar_url: null,
                 });
             }
         } catch (error) {
@@ -101,13 +105,19 @@ export default function ProfileScreen() {
                     </View>
 
                     {/* Avatar */}
-                    <View style={styles.avatarContainer}>
-                        <View style={styles.avatar}>
-                            <Text style={styles.avatarEmoji}>
-                                {profile?.gender === 'female' ? '👩' : '👨'}
-                            </Text>
-                        </View>
+                    <View style={styles.avatarSection}>
+                        {user && (
+                            <AvatarPicker
+                                userId={user.id}
+                                currentAvatarUrl={profile?.avatar_url || null}
+                                gender={profile?.gender}
+                                onAvatarUpdated={(url) => {
+                                    setProfile(prev => prev ? { ...prev, avatar_url: url } : null);
+                                }}
+                            />
+                        )}
                         <Text style={styles.name}>{profile?.name || 'Usuario'}</Text>
+                        <Text style={styles.editHint}>Toca la foto para cambiarla</Text>
                     </View>
 
                     {/* Info Cards */}
@@ -139,7 +149,10 @@ export default function ProfileScreen() {
 
                     {/* Actions */}
                     <View style={styles.actionsContainer}>
-                        <Pressable style={styles.actionButton}>
+                        <Pressable
+                            style={styles.actionButton}
+                            onPress={() => router.push('/(app)/edit-profile')}
+                        >
                             <Text style={styles.actionIcon}>✏️</Text>
                             <Text style={styles.actionText}>Editar Perfil</Text>
                         </Pressable>
@@ -212,23 +225,15 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginRight: 40,
     },
-    avatarContainer: {
+    avatarSection: {
         alignItems: 'center',
         marginBottom: 30,
     },
-    avatar: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 16,
-        borderWidth: 4,
-        borderColor: '#FFF',
-    },
-    avatarEmoji: {
-        fontSize: 64,
+    editHint: {
+        fontSize: 14,
+        color: '#FFF',
+        opacity: 0.7,
+        marginTop: 8,
     },
     name: {
         fontSize: 28,

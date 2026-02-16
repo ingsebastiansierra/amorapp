@@ -10,6 +10,7 @@ export interface Database {
           couple_id: string | null;
           gender: string | null;
           birth_date: string | null;
+          last_name_change: string | null;
           created_at: string;
         };
         Insert: Omit<Database['public']['Tables']['users']['Row'], 'id' | 'created_at'>;
