@@ -1073,13 +1073,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
     },
     headerAvatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
     },
     headerAvatarPlaceholder: {
-        width: 32,
-        height: 32,
+        width: 40,
+        height: 40,
         borderRadius: 16,
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',

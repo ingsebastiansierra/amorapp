@@ -31,6 +31,7 @@ interface PartnerInfo {
     id: string;
     name: string;
     avatar_url: string | null;
+    last_seen: string | null;
 }
 
 export default function MessagesScreen() {
@@ -51,10 +52,18 @@ export default function MessagesScreen() {
         loadMyProfile();
         loadPartnerInfo();
         loadMyCurrentEmotion();
+        updateLastSeen(); // Registrar que el usuario entró al chat
 
         // Polling para actualizar la emoción cada 3 segundos
         const emotionInterval = setInterval(loadMyCurrentEmotion, 3000);
-        return () => clearInterval(emotionInterval);
+
+        // Actualizar last_seen cada 30 segundos mientras está en el chat
+        const lastSeenInterval = setInterval(updateLastSeen, 30000);
+
+        return () => {
+            clearInterval(emotionInterval);
+            clearInterval(lastSeenInterval);
+        };
     }, []);
 
     useEffect(() => {
@@ -65,6 +74,14 @@ export default function MessagesScreen() {
             return () => clearInterval(interval);
         }
     }, [user, partner]);
+
+    // Polling para actualizar info de la pareja (incluyendo last_seen)
+    useEffect(() => {
+        if (partner) {
+            const partnerInterval = setInterval(loadPartnerInfo, 5000); // Cada 5 segundos
+            return () => clearInterval(partnerInterval);
+        }
+    }, [partner]);
 
     const loadMyProfile = async () => {
         if (!user) return;
@@ -110,7 +127,7 @@ export default function MessagesScreen() {
 
             const { data: partnerData } = await supabase
                 .from('users')
-                .select('id, name, avatar_url')
+                .select('id, name, avatar_url, last_seen')
                 .eq('id', partnerId)
                 .maybeSingle();
 
@@ -139,6 +156,60 @@ export default function MessagesScreen() {
             }
         } catch (error) {
             // Error loading emotion
+        }
+    };
+
+    const updateLastSeen = async () => {
+        if (!user) return;
+
+        try {
+            await supabase
+                .from('users')
+                .update({ last_seen: new Date().toISOString() })
+                .eq('id', user.id);
+        } catch (error) {
+            // Error updating last_seen
+        }
+    };
+
+    const formatLastSeen = (lastSeenDate: string | null) => {
+        if (!lastSeenDate) return 'Sin conexión';
+
+        const date = new Date(lastSeenDate);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+
+        // Considerar en línea si la última actualización fue hace menos de 2 minutos
+        if (diffMins < 2) return 'En línea';
+
+        // Verificar si es hoy
+        const isToday = date.toDateString() === now.toDateString();
+
+        // Verificar si es ayer
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const isYesterday = date.toDateString() === yesterday.toDateString();
+
+        // Formatear hora
+        const timeStr = date.toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+
+        if (isToday) {
+            return `Últ. vez hoy a las ${timeStr}`;
+        } else if (isYesterday) {
+            return `Últ. vez ayer a las ${timeStr}`;
+        } else {
+            // Fecha completa para días anteriores
+            const dateStr = date.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+            return `Últ. vez ${dateStr} a las ${timeStr}`;
         }
     };
 
@@ -483,7 +554,9 @@ export default function MessagesScreen() {
                             )}
                             <View>
                                 <Text style={styles.headerTitle}>{partner?.name || 'Pareja'}</Text>
-                                <Text style={styles.headerSubtitle}>Desde Junio 12, 2021</Text>
+                                <Text style={styles.headerSubtitle}>
+                                    {partner?.last_seen ? formatLastSeen(partner.last_seen) : 'Sin conexión'}
+                                </Text>
                             </View>
                         </View>
 
@@ -809,10 +882,11 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     imageButtonWrapper: {
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 4,
     },
     inputWrapper: {
         flex: 1,
