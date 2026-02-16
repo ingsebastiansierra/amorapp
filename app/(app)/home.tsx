@@ -10,6 +10,8 @@ import { EmotionalStateSelector } from '@/shared/components/EmotionalStateSelect
 import { AnimatedEmoji } from '@/shared/components/AnimatedEmoji';
 import { ImageAttachButton } from '@/shared/components/ImageAttachButton';
 import { PrivateImagesBadge } from '@/shared/components/PrivateImagesBadge';
+import { VoiceRecorderButton } from '@/shared/components/VoiceRecorderButton';
+import { VoiceNotesBadge } from '@/shared/components/VoiceNotesBadge';
 import { supabase } from '@/core/config/supabase';
 
 interface PartnerInfo {
@@ -833,33 +835,41 @@ export default function HomeScreen() {
                                     <Text style={styles.syncInputLabel}>
                                         Mensaje ({syncMessage.length}/50)
                                     </Text>
-                                    <View style={styles.inputRow}>
-                                        <TextInput
-                                            style={styles.syncInput}
-                                            placeholder="Escribe algo especial..."
-                                            placeholderTextColor="#999"
-                                            value={syncMessage}
-                                            onChangeText={(text) => {
-                                                if (text.length <= 50) {
-                                                    setSyncMessage(text);
-                                                }
-                                            }}
-                                            maxLength={50}
-                                            multiline
-                                            numberOfLines={2}
-                                            autoFocus
-                                        />
-                                        {partner && (
+                                    <TextInput
+                                        style={styles.syncInput}
+                                        placeholder="Escribe algo especial..."
+                                        placeholderTextColor="#999"
+                                        value={syncMessage}
+                                        onChangeText={(text) => {
+                                            if (text.length <= 50) {
+                                                setSyncMessage(text);
+                                            }
+                                        }}
+                                        maxLength={50}
+                                        multiline
+                                        numberOfLines={3}
+                                        autoFocus
+                                    />
+                                    {partner && (
+                                        <View style={styles.attachmentsRow}>
                                             <ImageAttachButton
                                                 toUserId={partner.id}
                                                 onSent={() => {
                                                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                                 }}
-                                                size={24}
+                                                size={28}
                                                 color="#007AFF"
                                             />
-                                        )}
-                                    </View>
+                                            <VoiceRecorderButton
+                                                toUserId={partner.id}
+                                                onSent={() => {
+                                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                                }}
+                                                size={28}
+                                                color="#FF3B30"
+                                            />
+                                        </View>
+                                    )}
                                 </View>
 
                                 <Pressable
@@ -1041,6 +1051,17 @@ export default function HomeScreen() {
                     >
                         <Text style={styles.imagesIcon}>📸</Text>
                         <PrivateImagesBadge />
+                    </Pressable>
+                </Animated.View>
+
+                {/* Botón de notas de voz flotante */}
+                <Animated.View style={styles.voiceButtonContainer}>
+                    <Pressable
+                        style={styles.voiceButton}
+                        onPress={() => router.push('/(app)/voice-notes')}
+                    >
+                        <Text style={styles.voiceIcon}>🎤</Text>
+                        <VoiceNotesBadge />
                     </Pressable>
                 </Animated.View>
 
@@ -1259,6 +1280,29 @@ const styles = StyleSheet.create({
     imagesIcon: {
         fontSize: 28,
     },
+    // Botón de notas de voz flotante
+    voiceButtonContainer: {
+        position: 'absolute',
+        bottom: 80,
+        right: 20,
+        zIndex: 10,
+    },
+    voiceButton: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#FF3B30',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    voiceIcon: {
+        fontSize: 28,
+    },
     sectionLabel: {
         fontSize: 14,
         color: '#FFF',
@@ -1409,6 +1453,7 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
+        alignItems: 'center',
         paddingHorizontal: 20,
     },
     syncModalContainer: {
@@ -1416,7 +1461,8 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         padding: 20,
         paddingBottom: 32,
-        maxHeight: '70%',
+        maxHeight: '80%',
+        width: '100%',
     },
     syncModalHeader: {
         alignItems: 'center',
@@ -1448,13 +1494,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         fontWeight: '600',
     },
-    inputRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 8,
-    },
     syncInput: {
-        flex: 1,
         backgroundColor: '#F7FAFC',
         borderRadius: 12,
         borderWidth: 2,
@@ -1463,9 +1503,16 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         fontSize: 16,
         color: '#1A202C',
-        minHeight: 70,
-        maxHeight: 100,
+        minHeight: 80,
+        maxHeight: 120,
         textAlignVertical: 'top',
+        marginBottom: 12,
+    },
+    attachmentsRow: {
+        flexDirection: 'row',
+        gap: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     syncSendButton: {
         backgroundColor: '#667eea',
