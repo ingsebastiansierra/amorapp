@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Image, TextInput, KeyboardAvoidingView, Platform, Modal, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -36,6 +36,7 @@ interface PartnerInfo {
 export default function MessagesScreen() {
     const { user } = useAuthStore();
     const router = useRouter();
+    const scrollViewRef = useRef<ScrollView>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [partner, setPartner] = useState<PartnerInfo | null>(null);
     const [myProfile, setMyProfile] = useState<{ name: string; avatar_url: string | null } | null>(null);
@@ -50,6 +51,10 @@ export default function MessagesScreen() {
         loadMyProfile();
         loadPartnerInfo();
         loadMyCurrentEmotion();
+
+        // Polling para actualizar la emoción cada 3 segundos
+        const emotionInterval = setInterval(loadMyCurrentEmotion, 3000);
+        return () => clearInterval(emotionInterval);
     }, []);
 
     useEffect(() => {
@@ -197,6 +202,11 @@ export default function MessagesScreen() {
             );
 
             setMessages(allMessages);
+
+            // Scroll al final después de cargar mensajes
+            setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: false });
+            }, 100);
 
             // Marcar como leídos los mensajes de texto recibidos
             const unreadIds = (messagesData || [])
@@ -445,11 +455,20 @@ export default function MessagesScreen() {
 
     const groupedMessages = groupMessagesByDate();
 
+    // Obtener el color de fondo basado en la emoción actual
+    const backgroundColor = myCurrentEmotion
+        ? EMOTIONAL_STATES[myCurrentEmotion]?.gradient[1] || '#F8F6F6'
+        : '#F8F6F6';
+
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
             {/* Header */}
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()}>
+                <Pressable
+                    onPress={() => router.back()}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={styles.backButton}
+                >
                     <Ionicons name="arrow-back" size={24} color="#181113" />
                 </Pressable>
 
@@ -468,7 +487,11 @@ export default function MessagesScreen() {
                             </View>
                         </View>
 
-                        <Pressable onPress={() => setShowSearch(true)}>
+                        <Pressable
+                            onPress={() => setShowSearch(true)}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            style={styles.searchButton}
+                        >
                             <Ionicons name="search" size={24} color="#181113" />
                         </Pressable>
                     </>
@@ -482,10 +505,14 @@ export default function MessagesScreen() {
                             onChangeText={setSearchQuery}
                             autoFocus
                         />
-                        <Pressable onPress={() => {
-                            setShowSearch(false);
-                            setSearchQuery('');
-                        }}>
+                        <Pressable
+                            onPress={() => {
+                                setShowSearch(false);
+                                setSearchQuery('');
+                            }}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            style={styles.closeButton}
+                        >
                             <Ionicons name="close" size={24} color="#181113" />
                         </Pressable>
                     </>
@@ -494,7 +521,8 @@ export default function MessagesScreen() {
 
             {/* Messages */}
             <ScrollView
-                style={styles.messagesContainer}
+                ref={scrollViewRef}
+                style={[styles.messagesContainer, { backgroundColor }]}
                 contentContainerStyle={styles.messagesContent}
                 showsVerticalScrollIndicator={false}
             >
@@ -618,6 +646,18 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
         borderBottomWidth: 1,
         borderBottomColor: '#F4F0F2',
+    },
+    backButton: {
+        padding: 4,
+        marginLeft: -4,
+    },
+    searchButton: {
+        padding: 4,
+        marginRight: -4,
+    },
+    closeButton: {
+        padding: 4,
+        marginRight: -4,
     },
     headerCenter: {
         flexDirection: 'row',

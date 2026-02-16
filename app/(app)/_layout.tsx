@@ -3,7 +3,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/core/store/useAuthStore';
+import { useEmotionalStore } from '@/core/store/useEmotionalStore';
 import { supabase } from '@/core/config/supabase';
+import { EMOTIONAL_STATES } from '@/core/types/emotions';
 
 function MessagesTabIcon({ color }: { color: string }) {
     const { user } = useAuthStore();
@@ -63,6 +65,45 @@ function MessagesTabIcon({ color }: { color: string }) {
     );
 }
 
+function EmotionalTabIcon() {
+    const { user } = useAuthStore();
+    const { myState } = useEmotionalStore();
+    const [currentEmoji, setCurrentEmoji] = useState('❤️');
+
+    useEffect(() => {
+        if (!user) return;
+
+        const loadMyEmotion = async () => {
+            try {
+                const { data } = await supabase
+                    .from('emotional_states')
+                    .select('state')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (data?.state) {
+                    const emoji = EMOTIONAL_STATES[data.state]?.emoji || '❤️';
+                    setCurrentEmoji(emoji);
+                }
+            } catch (error) {
+                console.error('Error loading emotion:', error);
+            }
+        };
+
+        loadMyEmotion();
+
+        // Actualizar cada 5 segundos
+        const interval = setInterval(loadMyEmotion, 5000);
+        return () => clearInterval(interval);
+    }, [user, myState]);
+
+    return (
+        <Text style={styles.emojiIcon}>{currentEmoji}</Text>
+    );
+}
+
 export default function AppLayout() {
     return (
         <Tabs
@@ -106,9 +147,7 @@ export default function AppLayout() {
                 name="heart"
                 options={{
                     title: '',
-                    tabBarIcon: ({ color }) => (
-                        <Ionicons name="heart" size={28} color="#FFF" />
-                    ),
+                    tabBarIcon: () => <EmotionalTabIcon />,
                     tabBarIconStyle: {
                         width: 48,
                         height: 48,
@@ -212,5 +251,8 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 10,
         fontWeight: 'bold',
+    },
+    emojiIcon: {
+        fontSize: 24,
     },
 });
