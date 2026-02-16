@@ -75,7 +75,7 @@ export default function MessagesScreen() {
                 setMyProfile(data);
             }
         } catch (error) {
-            console.error('Error loading my profile:', error);
+            // Error loading profile
         }
     };
 
@@ -113,7 +113,7 @@ export default function MessagesScreen() {
                 setPartner(partnerData);
             }
         } catch (error) {
-            console.error('Error loading partner:', error);
+            // Error loading partner
         }
     };
 
@@ -133,7 +133,7 @@ export default function MessagesScreen() {
                 setMyCurrentEmotion(data.state as EmotionalState);
             }
         } catch (error) {
-            console.error('Error loading my emotion:', error);
+            // Error loading emotion
         }
     };
 
@@ -148,11 +148,8 @@ export default function MessagesScreen() {
                 .maybeSingle();
 
             if (!userData?.couple_id) {
-                console.log('No couple_id found');
                 return;
             }
-
-            console.log('Loading messages for couple:', userData.couple_id);
 
             // Cargar mensajes de texto
             const { data: messagesData, error: messagesError } = await supabase
@@ -162,7 +159,6 @@ export default function MessagesScreen() {
                 .order('created_at', { ascending: true });
 
             if (messagesError) {
-                console.error('Error loading messages:', messagesError);
                 return;
             }
 
@@ -174,7 +170,7 @@ export default function MessagesScreen() {
                 .order('created_at', { ascending: true });
 
             if (imagesError) {
-                console.error('Error loading images:', imagesError);
+                // Error loading images
             }
 
             // Combinar mensajes e imágenes
@@ -200,7 +196,6 @@ export default function MessagesScreen() {
                 (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
             );
 
-            console.log('Total messages loaded:', allMessages.length);
             setMessages(allMessages);
 
             // Marcar como leídos los mensajes de texto recibidos
@@ -209,14 +204,13 @@ export default function MessagesScreen() {
                 .map(msg => msg.id);
 
             if (unreadIds.length > 0) {
-                console.log('Marking as read:', unreadIds.length);
                 await supabase
                     .from('sync_messages')
                     .update({ read: true })
                     .in('id', unreadIds);
             }
         } catch (error) {
-            console.error('Error loading messages:', error);
+            // Error loading messages
         }
     };
 
@@ -228,11 +222,11 @@ export default function MessagesScreen() {
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
 
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays === 1) return 'Yesterday';
-        return date.toLocaleDateString();
+        if (diffMins < 1) return 'Ahora';
+        if (diffMins < 60) return `Hace ${diffMins}m`;
+        if (diffHours < 24) return `Hace ${diffHours}h`;
+        if (diffDays === 1) return 'Ayer';
+        return date.toLocaleDateString('es-ES');
     };
 
     const groupMessagesByDate = () => {
@@ -253,11 +247,11 @@ export default function MessagesScreen() {
 
             let label = '';
             if (date.toDateString() === today.toDateString()) {
-                label = 'TODAY';
+                label = 'HOY';
             } else if (date.toDateString() === yesterday.toDateString()) {
-                label = 'YESTERDAY';
+                label = 'AYER';
             } else {
-                label = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
+                label = date.toLocaleDateString('es-ES', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
             }
 
             if (!groups[label]) {
@@ -271,7 +265,6 @@ export default function MessagesScreen() {
 
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !partner || !user || !myCurrentEmotion) {
-            console.log('Cannot send message - missing data');
             return;
         }
 
@@ -283,7 +276,6 @@ export default function MessagesScreen() {
                 .maybeSingle();
 
             if (!userData?.couple_id) {
-                console.log('No couple_id found');
                 return;
             }
 
@@ -298,7 +290,6 @@ export default function MessagesScreen() {
                 });
 
             if (error) {
-                console.error('Error sending message:', error);
                 return;
             }
 
@@ -306,7 +297,7 @@ export default function MessagesScreen() {
             setNewMessage('');
             loadMessages(); // Recargar mensajes inmediatamente
         } catch (error) {
-            console.error('Error sending message:', error);
+            // Error sending message
         }
     };
 
@@ -343,7 +334,6 @@ export default function MessagesScreen() {
             // Bloquear capturas de pantalla
             ScreenCapture.preventScreenCaptureAsync();
         } catch (error) {
-            console.error('Error al abrir imagen:', error);
             Alert.alert('Error', 'No se pudo cargar la imagen');
         } finally {
             setIsLoadingImage(false);
@@ -365,7 +355,7 @@ export default function MessagesScreen() {
                 .eq('id', viewingImage.id);
 
             if (error) {
-                console.error('Error marking image as viewed:', error);
+                // Error marking as viewed
             }
 
             // Desbloquear capturas
@@ -376,7 +366,6 @@ export default function MessagesScreen() {
             // Recargar mensajes para actualizar el estado
             loadMessages();
         } catch (error) {
-            console.error('Error al cerrar imagen:', error);
             setViewingImage(null);
         }
     };
@@ -474,8 +463,8 @@ export default function MessagesScreen() {
                                 />
                             )}
                             <View>
-                                <Text style={styles.headerTitle}>{partner?.name || 'Partner'}</Text>
-                                <Text style={styles.headerSubtitle}>Since June 12, 2021</Text>
+                                <Text style={styles.headerTitle}>{partner?.name || 'Pareja'}</Text>
+                                <Text style={styles.headerSubtitle}>Desde Junio 12, 2021</Text>
                             </View>
                         </View>
 
@@ -512,8 +501,8 @@ export default function MessagesScreen() {
                 {Object.keys(groupedMessages).length === 0 ? (
                     <View style={styles.emptyState}>
                         <Text style={styles.emptyEmoji}>💌</Text>
-                        <Text style={styles.emptyText}>No messages yet</Text>
-                        <Text style={styles.emptySubtext}>Start a conversation with your partner</Text>
+                        <Text style={styles.emptyText}>No hay mensajes aún</Text>
+                        <Text style={styles.emptySubtext}>Inicia una conversación con tu pareja</Text>
                     </View>
                 ) : (
                     Object.entries(groupedMessages).map(([date, msgs]) => (
@@ -549,7 +538,7 @@ export default function MessagesScreen() {
                     <View style={styles.inputWrapper}>
                         <TextInput
                             style={styles.input}
-                            placeholder="Share a thought..."
+                            placeholder="Comparte un pensamiento..."
                             placeholderTextColor="#9CA3AF"
                             value={newMessage}
                             onChangeText={setNewMessage}

@@ -88,7 +88,7 @@ export default function AppLayout() {
             <Tabs.Screen
                 name="home"
                 options={{
-                    title: 'Home',
+                    title: 'Inicio',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="home" size={26} color={color} />
                     ),
@@ -97,7 +97,7 @@ export default function AppLayout() {
             <Tabs.Screen
                 name="messages"
                 options={{
-                    title: 'Messages',
+                    title: 'Mensajes',
                     tabBarIcon: ({ color }) => <MessagesTabIcon color={color} />,
                     tabBarStyle: { display: 'none' },
                 }}
@@ -126,7 +126,7 @@ export default function AppLayout() {
             <Tabs.Screen
                 name="private-images"
                 options={{
-                    title: 'Gallery',
+                    title: 'Galería',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="images" size={26} color={color} />
                     ),
@@ -135,7 +135,7 @@ export default function AppLayout() {
             <Tabs.Screen
                 name="profile"
                 options={{
-                    title: 'Profile',
+                    title: 'Perfil',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="person-circle" size={26} color={color} />
                     ),

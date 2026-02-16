@@ -706,7 +706,7 @@ export default function HomeScreen() {
                                     {partner && partnerStateConfig ? partnerStateConfig.label : 'Sin estado'}
                                 </Text>
                                 <Text style={styles.timeText}>
-                                    {partner && partnerStateConfig ? 'UPDATED 2M AGO' : ''}
+                                    {partner && partnerStateConfig ? 'ACTUALIZADO HACE 2M' : ''}
                                 </Text>
                             </View>
                         </Pressable>
@@ -735,10 +735,10 @@ export default function HomeScreen() {
                                     <Text style={styles.emojiLarge}>😊</Text>
                                 )}
                                 <Text style={styles.moodText}>
-                                    {myStateConfig ? myStateConfig.label : 'Tap to select'}
+                                    {myStateConfig ? myStateConfig.label : 'Toca para seleccionar'}
                                 </Text>
                                 <Text style={styles.timeText}>
-                                    {myStateConfig ? 'UPDATED NOW' : ''}
+                                    {myStateConfig ? 'ACTUALIZADO AHORA' : ''}
                                 </Text>
                             </View>
                         </Pressable>
@@ -770,10 +770,10 @@ export default function HomeScreen() {
                     {isSynced && partner && (
                         <View style={styles.syncMessage}>
                             <Text style={styles.syncMessageText}>
-                                You both are feeling the same way!
+                                ¡Ambos se sienten de la misma manera!
                             </Text>
                             <Text style={styles.syncStreak}>
-                                Relationship streak: 12 days
+                                Racha de relación: 12 días
                             </Text>
                         </View>
                     )}
@@ -784,7 +784,7 @@ export default function HomeScreen() {
                         onPress={() => setShowStateSelector(true)}
                     >
                         <Ionicons name="happy-outline" size={24} color="#FFF" />
-                        <Text style={styles.changeMoodText}>Change My Mood</Text>
+                        <Text style={styles.changeMoodText}>Cambiar Mi Estado</Text>
                     </Pressable>
 
                     {/* Upcoming Date Card */}
@@ -794,8 +794,8 @@ export default function HomeScreen() {
                                 <Ionicons name="calendar-outline" size={22} color="#EB477E" />
                             </View>
                             <View>
-                                <Text style={styles.upcomingTitle}>Upcoming Date</Text>
-                                <Text style={styles.upcomingSubtitle}>Friday, 7:00 PM • Sushi Night</Text>
+                                <Text style={styles.upcomingTitle}>Próxima Cita</Text>
+                                <Text style={styles.upcomingSubtitle}>Viernes, 7:00 PM • Noche de Sushi</Text>
                             </View>
                         </View>
                         <Ionicons name="chevron-forward" size={22} color="#D1D5DB" />
