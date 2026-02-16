@@ -802,40 +802,6 @@ export default function HomeScreen() {
                     </Pressable>
                 </ScrollView>
 
-                {/* Bottom Navigation */}
-                <View style={styles.bottomNav}>
-                    <Pressable style={styles.navItem}>
-                        <Ionicons name="home" size={26} color="#EB477E" />
-                        <Text style={[styles.navLabel, styles.navLabelActive]}>Home</Text>
-                    </Pressable>
-
-                    <Pressable style={styles.navItem} onPress={openMessageNotification}>
-                        <Ionicons name="chatbubbles" size={26} color="#6B7280" />
-                        <Text style={styles.navLabel}>Messages</Text>
-                        {unreadCount > 0 && (
-                            <View style={styles.navBadge}>
-                                <Text style={styles.navBadgeText}>{unreadCount}</Text>
-                            </View>
-                        )}
-                    </Pressable>
-
-                    <View style={styles.navItemCenter}>
-                        <Pressable style={styles.navCenterBtn}>
-                            <Ionicons name="heart" size={28} color="#FFF" />
-                        </Pressable>
-                    </View>
-
-                    <Pressable style={styles.navItem} onPress={() => router.push('/(app)/private-images')}>
-                        <Ionicons name="images" size={26} color="#6B7280" />
-                        <Text style={styles.navLabel}>Gallery</Text>
-                    </Pressable>
-
-                    <Pressable style={styles.navItem} onPress={() => setShowMenu(true)}>
-                        <Ionicons name="person-circle" size={26} color="#6B7280" />
-                        <Text style={styles.navLabel}>Profile</Text>
-                    </Pressable>
-                </View>
-
                 {/* Modal de selector de estados */}
                 <Modal
                     visible={showStateSelector}
@@ -1286,7 +1252,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 80,
+        marginBottom: 20,
     },
     upcomingLeft: {
         flexDirection: 'row',
