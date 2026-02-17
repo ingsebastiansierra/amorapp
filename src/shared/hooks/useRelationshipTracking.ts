@@ -70,6 +70,18 @@ export const useRelationshipTracking = (coupleId: string | null) => {
             if (error) throw error;
 
             console.log('✅ Sync ended:', currentSyncId);
+            
+            // BORRAR TODO EL HISTORIAL cuando termina la sincronía
+            if (coupleId) {
+                console.log('🗑️ Borrando historial al terminar sincronía...');
+                
+                // Importar el servicio de limpieza
+                const { autoCleanupManager } = await import('@/core/services/autoCleanupManager');
+                await autoCleanupManager.cleanupOnRelationshipEnd(coupleId);
+                
+                console.log('✅ Historial borrado completamente');
+            }
+            
             setCurrentSyncId(null);
         } catch (error) {
             console.error('Error ending sync:', error);

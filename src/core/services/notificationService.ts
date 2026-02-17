@@ -1,17 +1,26 @@
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { supabase } from '@/core/config/supabase';
 import { EmotionalState, EMOTIONAL_STATES } from '@/core/types/emotions';
 
-// Configurar el comportamiento de las notificaciones
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-    }),
-});
+// Verificar si estamos en Expo Go
+const isExpoGo = Constants.appOwnership === 'expo';
+
+// Solo importar Notifications si NO es Expo Go
+let Notifications: any = null;
+if (!isExpoGo) {
+    Notifications = require('expo-notifications');
+    
+    // Configurar el comportamiento de las notificaciones
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+        }),
+    });
+}
 
 export interface NotificationData {
     type: 'emotion_change' | 'sync_detected' | 'message_received' | 'image_received' | 'voice_received';
@@ -30,6 +39,12 @@ class NotificationService {
      */
     async initialize(userId: string): Promise<string | null> {
         try {
+            // Si es Expo Go, no intentar obtener push token
+            if (isExpoGo) {
+                console.log('⚠️ Push notifications no disponibles en Expo Go. Usa un development build.');
+                return null;
+            }
+
             // Verificar si es un dispositivo físico
             if (!Device.isDevice) {
                 console.log('⚠️ Las notificaciones push solo funcionan en dispositivos físicos');
@@ -280,6 +295,7 @@ class NotificationService {
      * Limpiar badge de notificaciones
      */
     async clearBadge(): Promise<void> {
+        if (!Notifications || isExpoGo) return;
         await Notifications.setBadgeCountAsync(0);
     }
 
@@ -287,8 +303,9 @@ class NotificationService {
      * Configurar listener para notificaciones recibidas
      */
     addNotificationReceivedListener(
-        callback: (notification: Notifications.Notification) => void
-    ): Notifications.Subscription {
+        callback: (notification: any) => void
+    ): any {
+        if (!Notifications || isExpoGo) return null;
         return Notifications.addNotificationReceivedListener(callback);
     }
 
@@ -296,8 +313,9 @@ class NotificationService {
      * Configurar listener para cuando el usuario toca una notificación
      */
     addNotificationResponseListener(
-        callback: (response: Notifications.NotificationResponse) => void
-    ): Notifications.Subscription {
+        callback: (response: any) => void
+    ): any {
+        if (!Notifications || isExpoGo) return null;
         return Notifications.addNotificationResponseReceivedListener(callback);
     }
 

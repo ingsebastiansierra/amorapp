@@ -758,7 +758,7 @@ export default function HomeScreen() {
                 >
                     {/* Cards lado a lado */}
                     <View style={styles.cardsRow}>
-                        {/* Card HIM/HER - Partner */}
+                        {/* Card - Partner */}
                         <Pressable
                             style={[styles.moodCard, styles.cardBlue]}
                             onPress={() => partner && router.push({
@@ -768,7 +768,7 @@ export default function HomeScreen() {
                             disabled={!partner}
                         >
                             <Text style={styles.cardLabel}>
-                                {partner?.gender === 'female' ? 'HER' : 'HIM'}
+                                {partner?.name?.toUpperCase() || 'PAREJA'}
                             </Text>
                             <View style={styles.cardContent}>
                                 {partner && partnerStateConfig ? (
@@ -791,13 +791,13 @@ export default function HomeScreen() {
                             </View>
                         </Pressable>
 
-                        {/* Card HIM/HER - Yo */}
+                        {/* Card - Yo */}
                         <Pressable
                             style={[styles.moodCard, styles.cardPink]}
                             onPress={() => setShowStateSelector(true)}
                         >
                             <Text style={styles.cardLabel}>
-                                {myProfile?.gender === 'female' ? 'HER' : 'HIM'}
+                                {myProfile?.name?.toUpperCase() || 'YO'}
                             </Text>
                             <View style={styles.cardContent}>
                                 {myStateConfig ? (

@@ -57,12 +57,12 @@ export function useVoiceNotes() {
     }
   }, []);
 
-  const sendVoiceNote = useCallback(
+    const sendVoiceNote = useCallback(
     async (toUserId: string, audioUri: string, duration: number, options?: SendVoiceNoteOptions) => {
       try {
         setLoading(true);
         await voiceService.sendVoiceNote(toUserId, audioUri, duration, options);
-        Alert.alert('✅ Enviado', 'Nota de voz enviada correctamente');
+        // Nota enviada sin mensaje de alerta
       } catch (error) {
         console.error('Error sending voice note:', error);
         Alert.alert('Error', 'No se pudo enviar la nota de voz');

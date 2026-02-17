@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase, isDemoMode } from '@core/config/supabase';
 import type { User } from '@supabase/supabase-js';
+import { autoCleanupManager } from '@/core/services/autoCleanupManager';
 
 interface AuthState {
   user: User | null;
@@ -38,8 +39,20 @@ export const useAuthStore = create<AuthState>((set) => ({
       
       set({ user: session?.user ?? null, loading: false });
 
+      // Iniciar limpieza automática si hay sesión
+      if (session?.user) {
+        autoCleanupManager.start(60, 7); // Cada 60 min, mantener 7 días
+      }
+
       supabase.auth.onAuthStateChange((_event, session) => {
         set({ user: session?.user ?? null });
+        
+        // Iniciar/detener limpieza según el estado de sesión
+        if (session?.user) {
+          autoCleanupManager.start(60, 7);
+        } else {
+          autoCleanupManager.stop();
+        }
       });
     } catch (error) {
       console.error('Error initializing auth:', error);
@@ -87,7 +100,18 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     if (!isDemoMode) {
+      // Obtener user antes de cerrar sesión
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Limpiar datos antes de cerrar sesión (OPCIONAL - comentar si no quieres borrar al logout)
+      // if (user) {
+      //   await autoCleanupManager.cleanupOnLogout(user.id);
+      // }
+      
       await supabase.auth.signOut();
+      
+      // Detener limpieza automática
+      autoCleanupManager.stop();
     }
     set({ user: null });
   },

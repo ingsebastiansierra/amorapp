@@ -11,6 +11,8 @@ import { EMOTIONAL_STATES } from '@/core/types/emotions';
 import { EmotionalState } from '@/core/types/emotions';
 import { avatarService } from '@/core/services/avatarService';
 import { ImageAttachButton } from '@/shared/components/ImageAttachButton';
+import { VoiceRecorderButton } from '@/shared/components/VoiceRecorderButton';
+import { VoiceMessagePlayer } from '@/shared/components/VoiceMessagePlayer';
 import { mediaService } from '@/core/services/mediaService';
 import { notificationService } from '@/core/services/notificationService';
 
@@ -23,9 +25,14 @@ interface Message {
     created_at: string;
     from_user_id: string;
     read: boolean;
-    type?: 'text' | 'image';
+    type?: 'text' | 'image' | 'voice';
     image_id?: string;
     image_expired?: boolean;
+    voice_id?: string;
+    voice_duration?: number;
+    voice_storage_path?: string;
+    voice_listened?: boolean;
+    voice_waveform?: number[];
 }
 
 interface PartnerInfo {
@@ -251,7 +258,18 @@ export default function MessagesScreen() {
                 // Error loading images
             }
 
-            // Combinar mensajes e imágenes
+            // Cargar notas de voz como mensajes
+            const { data: voiceData, error: voiceError } = await supabase
+                .from('voice_notes')
+                .select('*')
+                .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`)
+                .order('created_at', { ascending: true });
+
+            if (voiceError) {
+                // Error loading voice notes
+            }
+
+            // Combinar mensajes, imágenes y notas de voz
             const textMessages: Message[] = (messagesData || []).map(msg => ({
                 ...msg,
                 type: 'text' as const,
@@ -269,8 +287,23 @@ export default function MessagesScreen() {
                 image_expired: img.is_expired || false,
             }));
 
+            const voiceMessages: Message[] = (voiceData || []).map(voice => ({
+                id: voice.id,
+                message: '🎤 Nota de voz',
+                synced_emotion: 'happy', // Emoción por defecto para voz
+                created_at: voice.created_at,
+                from_user_id: voice.from_user_id,
+                read: voice.listened || false,
+                type: 'voice' as const,
+                voice_id: voice.id,
+                voice_duration: voice.duration,
+                voice_storage_path: voice.storage_path,
+                voice_listened: voice.listened || false,
+                voice_waveform: voice.waveform_data?.data || [],
+            }));
+
             // Combinar y ordenar por fecha
-            const allMessages = [...textMessages, ...imageMessages].sort(
+            const allMessages = [...textMessages, ...imageMessages, ...voiceMessages].sort(
                 (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
             );
 
@@ -467,6 +500,7 @@ export default function MessagesScreen() {
         const isFromMe = msg.from_user_id === user?.id;
         const emotionConfig = EMOTIONAL_STATES[msg.synced_emotion as EmotionalState];
         const isImage = msg.type === 'image';
+        const isVoice = msg.type === 'voice';
 
         return (
             <Pressable
@@ -489,18 +523,31 @@ export default function MessagesScreen() {
                 <View style={[
                     styles.messageBubble,
                     isFromMe ? styles.messageBubbleMe : styles.messageBubblePartner,
-                    isImage && styles.messageBubbleImage
+                    isImage && styles.messageBubbleImage,
+                    isVoice && styles.messageBubbleVoice
                 ]}>
                     <View style={styles.messageHeader}>
                         <Text style={styles.messageEmoji}>
-                            {isImage ? '📷' : (emotionConfig?.emoji || '💕')}
+                            {isImage ? '📷' : isVoice ? '🎤' : (emotionConfig?.emoji || '💕')}
                         </Text>
                         <Text style={[styles.messageTime, isFromMe && styles.messageTimeMe]}>
                             {formatTime(msg.created_at)}
                         </Text>
                     </View>
 
-                    {isImage ? (
+                    {isVoice && msg.voice_id && msg.voice_storage_path && msg.voice_duration ? (
+                        <VoiceMessagePlayer
+                            voiceId={msg.voice_id}
+                            storagePath={msg.voice_storage_path}
+                            duration={msg.voice_duration}
+                            waveform={msg.voice_waveform}
+                            isFromMe={isFromMe}
+                            onListened={() => {
+                                // Recargar mensajes después de escuchar
+                                loadMessages();
+                            }}
+                        />
+                    ) : isImage ? (
                         <View>
                             <Text style={[styles.messageText, isFromMe && styles.messageTextMe]}>
                                 {msg.message}
@@ -545,95 +592,96 @@ export default function MessagesScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Pressable
-                    onPress={() => router.back()}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    style={styles.backButton}
-                >
-                    <Ionicons name="arrow-back" size={24} color="#181113" />
-                </Pressable>
-
-                {!showSearch ? (
-                    <>
-                        <View style={styles.headerCenter}>
-                            {partner?.avatar_url && (
-                                <Image
-                                    source={{ uri: avatarService.getAvatarUrl(partner.avatar_url) || undefined }}
-                                    style={styles.headerAvatar}
-                                />
-                            )}
-                            <View>
-                                <Text style={styles.headerTitle}>{partner?.name || 'Pareja'}</Text>
-                                <Text style={styles.headerSubtitle}>
-                                    {partner?.last_seen ? formatLastSeen(partner.last_seen) : 'Sin conexión'}
-                                </Text>
-                            </View>
-                        </View>
-
-                        <Pressable
-                            onPress={() => setShowSearch(true)}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            style={styles.searchButton}
-                        >
-                            <Ionicons name="search" size={24} color="#181113" />
-                        </Pressable>
-                    </>
-                ) : (
-                    <>
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder="Buscar mensajes..."
-                            placeholderTextColor="#9CA3AF"
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                            autoFocus
-                        />
-                        <Pressable
-                            onPress={() => {
-                                setShowSearch(false);
-                                setSearchQuery('');
-                            }}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            style={styles.closeButton}
-                        >
-                            <Ionicons name="close" size={24} color="#181113" />
-                        </Pressable>
-                    </>
-                )}
-            </View>
-
-            {/* Messages */}
-            <ScrollView
-                ref={scrollViewRef}
-                style={[styles.messagesContainer, { backgroundColor }]}
-                contentContainerStyle={styles.messagesContent}
-                showsVerticalScrollIndicator={false}
-            >
-                {Object.keys(groupedMessages).length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <Text style={styles.emptyEmoji}>💌</Text>
-                        <Text style={styles.emptyText}>No hay mensajes aún</Text>
-                        <Text style={styles.emptySubtext}>Inicia una conversación con tu pareja</Text>
-                    </View>
-                ) : (
-                    Object.entries(groupedMessages).map(([date, msgs]) => (
-                        <View key={date}>
-                            <View style={styles.dateLabel}>
-                                <Text style={styles.dateLabelText}>{date}</Text>
-                            </View>
-                            {msgs.map(renderMessage)}
-                        </View>
-                    ))
-                )}
-            </ScrollView>
-
-            {/* Input de mensaje */}
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={0}
             >
+                {/* Header */}
+                <View style={styles.header}>
+                    <Pressable
+                        onPress={() => router.back()}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        style={styles.backButton}
+                    >
+                        <Ionicons name="arrow-back" size={24} color="#181113" />
+                    </Pressable>
+
+                    {!showSearch ? (
+                        <>
+                            <View style={styles.headerCenter}>
+                                {partner?.avatar_url && (
+                                    <Image
+                                        source={{ uri: avatarService.getAvatarUrl(partner.avatar_url) || undefined }}
+                                        style={styles.headerAvatar}
+                                    />
+                                )}
+                                <View>
+                                    <Text style={styles.headerTitle}>{partner?.name || 'Pareja'}</Text>
+                                    <Text style={styles.headerSubtitle}>
+                                        {partner?.last_seen ? formatLastSeen(partner.last_seen) : 'Sin conexión'}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            <Pressable
+                                onPress={() => setShowSearch(true)}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                style={styles.searchButton}
+                            >
+                                <Ionicons name="search" size={24} color="#181113" />
+                            </Pressable>
+                        </>
+                    ) : (
+                        <>
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Buscar mensajes..."
+                                placeholderTextColor="#9CA3AF"
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                autoFocus
+                            />
+                            <Pressable
+                                onPress={() => {
+                                    setShowSearch(false);
+                                    setSearchQuery('');
+                                }}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                style={styles.closeButton}
+                            >
+                                <Ionicons name="close" size={24} color="#181113" />
+                            </Pressable>
+                        </>
+                    )}
+                </View>
+
+                {/* Messages */}
+                <ScrollView
+                    ref={scrollViewRef}
+                    style={[styles.messagesContainer, { backgroundColor }]}
+                    contentContainerStyle={styles.messagesContent}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {Object.keys(groupedMessages).length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyEmoji}>💌</Text>
+                            <Text style={styles.emptyText}>No hay mensajes aún</Text>
+                            <Text style={styles.emptySubtext}>Inicia una conversación con tu pareja</Text>
+                        </View>
+                    ) : (
+                        Object.entries(groupedMessages).map(([date, msgs]) => (
+                            <View key={date}>
+                                <View style={styles.dateLabel}>
+                                    <Text style={styles.dateLabelText}>{date}</Text>
+                                </View>
+                                {msgs.map(renderMessage)}
+                            </View>
+                        ))
+                    )}
+                </ScrollView>
+
+                {/* Input de mensaje */}
                 <View style={styles.inputContainer}>
                     {partner && (
                         <View style={styles.imageButtonWrapper}>
@@ -641,6 +689,7 @@ export default function MessagesScreen() {
                                 toUserId={partner.id}
                                 onSent={() => {
                                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                    loadMessages();
                                 }}
                                 size={28}
                                 color="#EB477E"
@@ -651,7 +700,7 @@ export default function MessagesScreen() {
                     <View style={styles.inputWrapper}>
                         <TextInput
                             style={styles.input}
-                            placeholder="Comparte un pensamiento..."
+                            placeholder="Mensaje..."
                             placeholderTextColor="#9CA3AF"
                             value={newMessage}
                             onChangeText={setNewMessage}
@@ -663,55 +712,70 @@ export default function MessagesScreen() {
                         </Pressable>
                     </View>
 
-                    <Pressable
-                        style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
-                        onPress={handleSendMessage}
-                        disabled={!newMessage.trim()}
-                    >
-                        <Ionicons name="send" size={24} color={newMessage.trim() ? "#EB477E" : "#D1D5DB"} />
-                    </Pressable>
-                </View>
-            </KeyboardAvoidingView>
-
-            {/* Modal para ver imagen privada */}
-            <Modal
-                visible={!!viewingImage}
-                transparent={false}
-                animationType="fade"
-                onRequestClose={handleCloseImage}
-            >
-                <View style={styles.imageModalContainer}>
-                    {viewingImage && (
-                        <>
-                            <Image
-                                source={{ uri: viewingImage.url }}
-                                style={styles.fullImage}
-                                resizeMode="contain"
+                    {/* Mostrar botón de voz cuando no hay texto, botón de enviar cuando hay texto */}
+                    {!newMessage.trim() && partner ? (
+                        <View style={styles.voiceButtonWrapper}>
+                            <VoiceRecorderButton
+                                toUserId={partner.id}
+                                onSent={() => {
+                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                    loadMessages();
+                                }}
+                                size={24}
+                                color="#EB477E"
                             />
-
-                            {viewingImage.caption && (
-                                <View style={styles.captionOverlay}>
-                                    <Text style={styles.captionText}>{viewingImage.caption}</Text>
-                                </View>
-                            )}
-
-                            <Pressable style={styles.closeImageButton} onPress={handleCloseImage}>
-                                <Text style={styles.closeImageButtonText}>✕</Text>
-                            </Pressable>
-
-                            <View style={styles.warningOverlay}>
-                                <Text style={styles.warningText}>
-                                    🔥 Esta imagen se autodestruirá al cerrar
-                                </Text>
-                            </View>
-
-                            <View style={styles.protectionOverlay}>
-                                <Text style={styles.protectionText}>🔒 Capturas bloqueadas</Text>
-                            </View>
-                        </>
+                        </View>
+                    ) : (
+                        <Pressable
+                            style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
+                            onPress={handleSendMessage}
+                            disabled={!newMessage.trim()}
+                        >
+                            <Ionicons name="send" size={24} color={newMessage.trim() ? "#EB477E" : "#D1D5DB"} />
+                        </Pressable>
                     )}
                 </View>
-            </Modal>
+
+                {/* Modal para ver imagen privada */}
+                <Modal
+                    visible={!!viewingImage}
+                    transparent={false}
+                    animationType="fade"
+                    onRequestClose={handleCloseImage}
+                >
+                    <View style={styles.imageModalContainer}>
+                        {viewingImage && (
+                            <>
+                                <Image
+                                    source={{ uri: viewingImage.url }}
+                                    style={styles.fullImage}
+                                    resizeMode="contain"
+                                />
+
+                                {viewingImage.caption && (
+                                    <View style={styles.captionOverlay}>
+                                        <Text style={styles.captionText}>{viewingImage.caption}</Text>
+                                    </View>
+                                )}
+
+                                <Pressable style={styles.closeImageButton} onPress={handleCloseImage}>
+                                    <Text style={styles.closeImageButtonText}>✕</Text>
+                                </Pressable>
+
+                                <View style={styles.warningOverlay}>
+                                    <Text style={styles.warningText}>
+                                        🔥 Esta imagen se autodestruirá al cerrar
+                                    </Text>
+                                </View>
+
+                                <View style={styles.protectionOverlay}>
+                                    <Text style={styles.protectionText}>🔒 Capturas bloqueadas</Text>
+                                </View>
+                            </>
+                        )}
+                    </View>
+                </Modal>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
@@ -869,6 +933,9 @@ const styles = StyleSheet.create({
         borderColor: '#EB477E',
         borderStyle: 'dashed',
     },
+    messageBubbleVoice: {
+        minWidth: 200,
+    },
     imageStatus: {
         fontSize: 11,
         color: '#6B7280',
@@ -886,12 +953,22 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 8,
-        paddingBottom: 8,
-        backgroundColor: '#FFF',
+        paddingTop: 10,
+        paddingBottom: 10,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
         borderTopWidth: 1,
-        borderTopColor: '#F4F0F2',
+        borderTopColor: 'rgba(244, 240, 242, 0.5)',
         gap: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    keyboardView: {
+        width: '100%',
     },
     imageButtonWrapper: {
         width: 44,
@@ -905,16 +982,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#F8F6F6',
-        borderRadius: 24,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        minHeight: 48,
+        borderRadius: 20,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        minHeight: 40,
     },
     input: {
         flex: 1,
         fontSize: 15,
         color: '#181113',
-        maxHeight: 100,
+        maxHeight: 80,
     },
     emojiButton: {
         width: 32,
@@ -931,6 +1008,12 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         opacity: 0.5,
+    },
+    voiceButtonWrapper: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     imageModalContainer: {
         flex: 1,

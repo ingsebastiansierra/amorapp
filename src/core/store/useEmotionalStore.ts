@@ -21,6 +21,10 @@ export const useEmotionalStore = create<EmotionalStore>((set, get) => ({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Obtener el estado anterior y el de la pareja
+    const previousState = get().myState;
+    const partnerState = get().partnerState;
+
     await supabase.from('emotional_states').insert({
       user_id: user.id,
       state,
@@ -28,6 +32,25 @@ export const useEmotionalStore = create<EmotionalStore>((set, get) => ({
     });
 
     set({ myState: state });
+
+    // Detectar si se rompió la sincronía
+    if (previousState && partnerState && previousState === partnerState && state !== partnerState) {
+      console.log('💔 Sincronía rota - Borrando historial...');
+      
+      // Obtener couple_id
+      const { data: userData } = await supabase
+        .from('users')
+        .select('couple_id')
+        .eq('id', user.id)
+        .single();
+
+      if (userData?.couple_id) {
+        // Borrar todo el historial
+        const { autoCleanupManager } = await import('@/core/services/autoCleanupManager');
+        await autoCleanupManager.cleanupOnRelationshipEnd(userData.couple_id);
+        console.log('✅ Historial borrado al romper sincronía');
+      }
+    }
   },
 
   fetchPartnerState: async (partnerId: string) => {
