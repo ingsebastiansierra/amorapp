@@ -12,6 +12,7 @@ import { EmotionalState } from '@/core/types/emotions';
 import { avatarService } from '@/core/services/avatarService';
 import { ImageAttachButton } from '@/shared/components/ImageAttachButton';
 import { mediaService } from '@/core/services/mediaService';
+import { notificationService } from '@/core/services/notificationService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,6 +33,7 @@ interface PartnerInfo {
     name: string;
     avatar_url: string | null;
     last_seen: string | null;
+    push_token: string | null;
 }
 
 export default function MessagesScreen() {
@@ -127,7 +129,7 @@ export default function MessagesScreen() {
 
             const { data: partnerData } = await supabase
                 .from('users')
-                .select('id, name, avatar_url, last_seen')
+                .select('id, name, avatar_url, last_seen, push_token')
                 .eq('id', partnerId)
                 .maybeSingle();
 
@@ -352,7 +354,7 @@ export default function MessagesScreen() {
         try {
             const { data: userData } = await supabase
                 .from('users')
-                .select('couple_id')
+                .select('couple_id, name')
                 .eq('id', user.id)
                 .maybeSingle();
 
@@ -372,6 +374,16 @@ export default function MessagesScreen() {
 
             if (error) {
                 return;
+            }
+
+            // Enviar notificación push a la pareja
+            if (partner.push_token && userData.name) {
+                await notificationService.sendMessageNotification(
+                    partner.push_token,
+                    userData.name,
+                    newMessage.trim(),
+                    myCurrentEmotion
+                );
             }
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

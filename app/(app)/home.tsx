@@ -15,6 +15,9 @@ import { VoiceRecorderButton } from '@/shared/components/VoiceRecorderButton';
 import { VoiceNotesBadge } from '@/shared/components/VoiceNotesBadge';
 import { supabase } from '@/core/config/supabase';
 import { avatarService } from '@/core/services/avatarService';
+import { useRelationshipTracking } from '@/shared/hooks/useRelationshipTracking';
+import { useNotifications } from '@/shared/hooks/useNotifications';
+import { notificationService } from '@/core/services/notificationService';
 
 interface PartnerInfo {
     id: string;
@@ -22,6 +25,7 @@ interface PartnerInfo {
     email: string;
     gender: string;
     birth_date: string;
+    push_token: string | null;
 }
 
 export default function HomeScreen() {
@@ -40,6 +44,17 @@ export default function HomeScreen() {
     const [unreadCount, setUnreadCount] = useState(0);
     const [messagesSentForEmotion, setMessagesSentForEmotion] = useState(0);
     const [emotionBlocked, setEmotionBlocked] = useState(false);
+    const [coupleId, setCoupleId] = useState<string | null>(null);
+
+    // Hook de tracking de relación
+    const { syncStats, recordSync, endSync } = useRelationshipTracking(coupleId);
+
+    // Hook de notificaciones
+    useNotifications();
+
+    // Referencias para tracking de estados previos
+    const prevMyState = useRef<EmotionalState | null>(null);
+    const prevPartnerState = useRef<EmotionalState | null>(null);
 
     // Animaciones
     const heartScale = useRef(new Animated.Value(1)).current;
@@ -144,9 +159,29 @@ export default function HomeScreen() {
         // Solo sincronizado si AMBOS tienen estado Y son iguales Y hay pareja
         const synced = !!(partner && myState && partnerState && myState === partnerState);
 
+        // Detectar si hubo un cambio de sincronización
+        const wasSync = prevMyState.current === prevPartnerState.current && prevMyState.current !== null;
+        const isNewSync = synced && !wasSync;
+
         if (isSynced !== synced) {
             setIsSynced(synced);
             if (synced) {
+                // 🎯 NUEVA SINCRONIZACIÓN DETECTADA
+                console.log('✨ Sincronización detectada:', myState);
+
+                // Registrar en base de datos
+                if (coupleId && myState) {
+                    recordSync(myState);
+                }
+
+                // Enviar notificación a la pareja si es una NUEVA sincronización
+                if (isNewSync && partner?.push_token && myProfile?.name && myState) {
+                    notificationService.sendSyncDetectedNotification(
+                        partner.push_token,
+                        myProfile.name,
+                        myState
+                    );
+                }
 
                 // Verificar si esta emoción está bloqueada
                 checkEmotionLimit(myState);
@@ -157,8 +192,15 @@ export default function HomeScreen() {
             } else {
                 // Detener animación si ya no están sincronizados
                 stopHintAnimation();
+
+                // Finalizar sincronización en BD
+                endSync();
             }
         }
+
+        // Actualizar referencias de estados previos
+        prevMyState.current = myState;
+        prevPartnerState.current = partnerState;
     }, [myState, partnerState, partner, isSynced]);
 
     useEffect(() => {
@@ -499,6 +541,9 @@ export default function HomeScreen() {
 
             if (!myData?.couple_id) return;
 
+            // Guardar couple_id para el hook de tracking
+            setCoupleId(myData.couple_id);
+
             // Obtener la pareja
             const { data: coupleData, error: coupleError } = await supabase
                 .from('couples')
@@ -516,7 +561,7 @@ export default function HomeScreen() {
             // Obtener info de la pareja
             const { data: partnerData, error: partnerError } = await supabase
                 .from('users')
-                .select('id, name, email, gender, birth_date')
+                .select('id, name, email, gender, birth_date, push_token')
                 .eq('id', partnerId)
                 .maybeSingle();
 
@@ -557,6 +602,15 @@ export default function HomeScreen() {
     const handleStateSelect = async (state: EmotionalState) => {
         await setMyState(state, 1);
         setShowStateSelector(false);
+
+        // Enviar notificación a la pareja sobre el cambio de estado
+        if (partner?.push_token && myProfile?.name) {
+            await notificationService.sendEmotionChangeNotification(
+                partner.push_token,
+                myProfile.name,
+                state
+            );
+        }
     };
 
     const handleSignOut = async () => {
@@ -621,7 +675,15 @@ export default function HomeScreen() {
                 throw error;
             }
 
-
+            // Enviar notificación push a la pareja
+            if (partner.push_token && myProfile?.name && myState) {
+                await notificationService.sendMessageNotification(
+                    partner.push_token,
+                    myProfile.name,
+                    syncMessage.trim(),
+                    myState
+                );
+            }
 
             // Actualizar contador
             setMessagesSentForEmotion(messagesSentForEmotion + 1);
@@ -670,6 +732,24 @@ export default function HomeScreen() {
                         )}
                     </Pressable>
                 </View>
+
+                {/* Contadores de Relación */}
+                {syncStats && (
+                    <View style={styles.relationshipStats}>
+                        <View style={styles.statItem}>
+                            <Text style={styles.statIcon}>❤️</Text>
+                            <Text style={styles.statValue}>{syncStats.days_together}</Text>
+                            <Text style={styles.statLabel}>días juntos</Text>
+                        </View>
+                        {syncStats.current_streak > 0 && (
+                            <View style={styles.statItem}>
+                                <Text style={styles.statIcon}>🔥</Text>
+                                <Text style={styles.statValue}>{syncStats.current_streak}</Text>
+                                <Text style={styles.statLabel}>días sincronizados</Text>
+                            </View>
+                        )}
+                    </View>
+                )}
 
                 <ScrollView
                     style={styles.scrollView}
@@ -748,19 +828,15 @@ export default function HomeScreen() {
                     {isSynced && partner && (
                         <View style={styles.syncButtonContainer}>
                             <Pressable
-                                style={[styles.syncButton, emotionBlocked && styles.syncButtonDisabled]}
+                                style={styles.syncButton}
                                 onPress={() => {
-                                    if (!emotionBlocked) {
-                                        setShowSyncModal(true);
-                                    }
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                    router.push('/(app)/messages');
                                 }}
-                                disabled={emotionBlocked}
                             >
                                 <Animated.View style={[styles.syncButtonInner, { transform: [{ scale: heartScale }] }]}>
-                                    <Ionicons name="sync" size={16} color="#FFF" />
-                                    <Text style={styles.syncText}>
-                                        {emotionBlocked ? 'LIMIT REACHED' : 'IN SYNC'}
-                                    </Text>
+                                    <Ionicons name="chatbubbles" size={16} color="#FFF" />
+                                    <Text style={styles.syncText}>IN SYNC - HABLAR AHORA</Text>
                                 </Animated.View>
                             </Pressable>
                         </View>
@@ -770,10 +846,20 @@ export default function HomeScreen() {
                     {isSynced && partner && (
                         <View style={styles.syncMessage}>
                             <Text style={styles.syncMessageText}>
-                                ¡Ambos se sienten de la misma manera!
+                                ✨ ¡Ambos se sienten igual! Ahora pueden hablar
                             </Text>
-                            <Text style={styles.syncStreak}>
-                                Racha de relación: 12 días
+                        </View>
+                    )}
+
+                    {/* Mensaje cuando NO están sincronizados */}
+                    {!isSynced && partner && myState && partnerState && (
+                        <View style={styles.notSyncedMessage}>
+                            <Text style={styles.notSyncedIcon}>🔒</Text>
+                            <Text style={styles.notSyncedText}>
+                                Mensajes bloqueados
+                            </Text>
+                            <Text style={styles.notSyncedSubtext}>
+                                Sincronízate emocionalmente para hablar
                             </Text>
                         </View>
                     )}
@@ -1110,6 +1196,36 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: 'bold',
     },
+    // Relationship Stats
+    relationshipStats: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        backgroundColor: '#FFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+        gap: 24,
+    },
+    statItem: {
+        alignItems: 'center',
+    },
+    statIcon: {
+        fontSize: 20,
+        marginBottom: 4,
+    },
+    statValue: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#EB477E',
+    },
+    statLabel: {
+        fontSize: 10,
+        color: '#6B7280',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
     // Content
     scrollView: {
         flex: 1,
@@ -1212,13 +1328,39 @@ const styles = StyleSheet.create({
     },
     syncMessageText: {
         fontSize: 14,
-        color: '#6B7280',
-        marginBottom: 4,
+        color: '#EB477E',
+        fontWeight: '600',
+        textAlign: 'center',
     },
     syncStreak: {
         fontSize: 14,
         color: '#EB477E',
         fontWeight: '600',
+    },
+    // Not Synced Message
+    notSyncedMessage: {
+        alignItems: 'center',
+        marginBottom: 24,
+        backgroundColor: '#F3F4F6',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 16,
+        marginHorizontal: 16,
+    },
+    notSyncedIcon: {
+        fontSize: 32,
+        marginBottom: 8,
+    },
+    notSyncedText: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    notSyncedSubtext: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        textAlign: 'center',
     },
     // Change Mood Button
     changeMoodBtn: {

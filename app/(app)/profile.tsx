@@ -99,7 +99,7 @@ export default function ProfileScreen() {
                     <Pressable style={styles.backButton} onPress={() => router.back()}>
                         <Ionicons name="arrow-back" size={24} color="#181113" />
                     </Pressable>
-                    <Text style={styles.headerTitle}>OUR PROFILE</Text>
+                    <Text style={styles.headerTitle}>NUESTRO PERFIL</Text>
                     <View style={{ width: 40 }} />
                 </View>
 
@@ -171,7 +171,7 @@ export default function ProfileScreen() {
                     </View>
 
                     {/* Settings Section */}
-                    <Text style={styles.sectionTitle}>SETTINGS</Text>
+                    <Text style={styles.sectionTitle}>CONFIGURACIÓN</Text>
 
                     {/* Settings Cards */}
                     <Pressable style={styles.settingCard}>
@@ -179,8 +179,8 @@ export default function ProfileScreen() {
                             <Ionicons name="notifications" size={24} color="#EB477E" />
                         </View>
                         <View style={styles.settingContent}>
-                            <Text style={styles.settingTitle}>Notifications</Text>
-                            <Text style={styles.settingSubtitle}>Anniversaries, shared reminders</Text>
+                            <Text style={styles.settingTitle}>Notificaciones</Text>
+                            <Text style={styles.settingSubtitle}>Aniversarios, recordatorios compartidos</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </Pressable>
@@ -190,8 +190,8 @@ export default function ProfileScreen() {
                             <Ionicons name="lock-closed" size={24} color="#EB477E" />
                         </View>
                         <View style={styles.settingContent}>
-                            <Text style={styles.settingTitle}>Privacy & Security</Text>
-                            <Text style={styles.settingSubtitle}>Profile visibility, shared data</Text>
+                            <Text style={styles.settingTitle}>Privacidad y Seguridad</Text>
+                            <Text style={styles.settingSubtitle}>Visibilidad del perfil, datos compartidos</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </Pressable>
@@ -201,8 +201,8 @@ export default function ProfileScreen() {
                             <Ionicons name="color-palette" size={24} color="#EB477E" />
                         </View>
                         <View style={styles.settingContent}>
-                            <Text style={styles.settingTitle}>Personalization</Text>
-                            <Text style={styles.settingSubtitle}>Themes, colors, app icons</Text>
+                            <Text style={styles.settingTitle}>Personalización</Text>
+                            <Text style={styles.settingSubtitle}>Temas, colores, iconos de la app</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </Pressable>
@@ -215,8 +215,8 @@ export default function ProfileScreen() {
                             <Ionicons name="person" size={24} color="#EB477E" />
                         </View>
                         <View style={styles.settingContent}>
-                            <Text style={styles.settingTitle}>Edit Profile</Text>
-                            <Text style={styles.settingSubtitle}>Update your information</Text>
+                            <Text style={styles.settingTitle}>Editar Perfil</Text>
+                            <Text style={styles.settingSubtitle}>Actualiza tu información</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </Pressable>
@@ -229,8 +229,8 @@ export default function ProfileScreen() {
                             <Ionicons name="heart" size={24} color="#EB477E" />
                         </View>
                         <View style={styles.settingContent}>
-                            <Text style={styles.settingTitle}>Link Partner</Text>
-                            <Text style={styles.settingSubtitle}>Connect with your partner</Text>
+                            <Text style={styles.settingTitle}>Vincular Pareja</Text>
+                            <Text style={styles.settingSubtitle}>Conéctate con tu pareja</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </Pressable>
@@ -243,8 +243,8 @@ export default function ProfileScreen() {
                             <Ionicons name="log-out" size={24} color="#EF4444" />
                         </View>
                         <View style={styles.settingContent}>
-                            <Text style={[styles.settingTitle, styles.dangerText]}>Sign Out</Text>
-                            <Text style={styles.settingSubtitle}>Log out of your account</Text>
+                            <Text style={[styles.settingTitle, styles.dangerText]}>Cerrar Sesión</Text>
+                            <Text style={styles.settingSubtitle}>Salir de tu cuenta</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </Pressable>

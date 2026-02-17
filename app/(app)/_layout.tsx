@@ -1,13 +1,14 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/core/store/useAuthStore';
 import { useEmotionalStore } from '@/core/store/useEmotionalStore';
 import { supabase } from '@/core/config/supabase';
 import { EMOTIONAL_STATES } from '@/core/types/emotions';
+import * as Haptics from 'expo-haptics';
 
-function MessagesTabIcon({ color }: { color: string }) {
+function MessagesTabIcon({ color, isSynced }: { color: string; isSynced: boolean }) {
     const { user } = useAuthStore();
     const [unreadCount, setUnreadCount] = useState(0);
 
@@ -55,8 +56,17 @@ function MessagesTabIcon({ color }: { color: string }) {
 
     return (
         <View style={styles.iconContainer}>
-            <Ionicons name="chatbubbles" size={26} color={color} />
-            {unreadCount > 0 && (
+            <Ionicons
+                name="chatbubbles"
+                size={26}
+                color={isSynced ? color : '#D1D5DB'}
+            />
+            {!isSynced && (
+                <View style={styles.lockBadge}>
+                    <Ionicons name="lock-closed" size={10} color="#FFF" />
+                </View>
+            )}
+            {unreadCount > 0 && isSynced && (
                 <View style={styles.badge}>
                     <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
                 </View>
@@ -105,6 +115,16 @@ function EmotionalTabIcon() {
 }
 
 export default function AppLayout() {
+    const { user } = useAuthStore();
+    const { myState, partnerState } = useEmotionalStore();
+    const [isSynced, setIsSynced] = useState(false);
+
+    useEffect(() => {
+        // Verificar sincronización
+        const synced = !!(myState && partnerState && myState === partnerState);
+        setIsSynced(synced);
+    }, [myState, partnerState]);
+
     return (
         <Tabs
             screenOptions={{
@@ -139,8 +159,21 @@ export default function AppLayout() {
                 name="messages"
                 options={{
                     title: 'Mensajes',
-                    tabBarIcon: ({ color }) => <MessagesTabIcon color={color} />,
+                    tabBarIcon: ({ color }) => <MessagesTabIcon color={color} isSynced={isSynced} />,
                     tabBarStyle: { display: 'none' },
+                }}
+                listeners={{
+                    tabPress: (e) => {
+                        if (!isSynced) {
+                            e.preventDefault();
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                            Alert.alert(
+                                '🔒 Mensajes Bloqueados',
+                                'Solo puedes enviar mensajes cuando ambos están sincronizados emocionalmente.\n\n✨ Actualiza tu estado para conectar con tu pareja.',
+                                [{ text: 'Entendido', style: 'default' }]
+                            );
+                        }
+                    },
                 }}
             />
             <Tabs.Screen
@@ -244,6 +277,19 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 4,
+        borderWidth: 2,
+        borderColor: '#FFF',
+    },
+    lockBadge: {
+        position: 'absolute',
+        top: -6,
+        right: -10,
+        backgroundColor: '#9CA3AF',
+        borderRadius: 10,
+        width: 18,
+        height: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
         borderWidth: 2,
         borderColor: '#FFF',
     },

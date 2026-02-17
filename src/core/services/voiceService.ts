@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase';
 import { VoiceNote, SendVoiceNoteOptions, VoiceNoteResult } from '../types/voice';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
+import { notificationService } from './notificationService';
 
 class VoiceService {
   private readonly BUCKET_NAME = 'voice-notes';
@@ -156,6 +157,33 @@ class VoiceService {
         .single();
 
       if (error) throw error;
+
+      // 6. Enviar notificación push al destinatario
+      try {
+        const { data: recipientData } = await supabase
+          .from('users')
+          .select('push_token')
+          .eq('id', toUserId)
+          .single();
+
+        const { data: senderData } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+
+        if (recipientData?.push_token && senderData?.name) {
+          await notificationService.sendVoiceNoteNotification(
+            recipientData.push_token,
+            senderData.name,
+            duration
+          );
+          console.log('✅ Notificación de nota de voz enviada');
+        }
+      } catch (notifError) {
+        console.error('⚠️ Error enviando notificación (no crítico):', notifError);
+        // No lanzar error, la nota ya se envió correctamente
+      }
 
       return data as VoiceNote;
     } catch (error) {

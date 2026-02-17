@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase';
 import { PrivateImage, SendPrivateImageOptions, ViewImageResult } from '../types/media';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { notificationService } from './notificationService';
 
 class MediaService {
   private readonly BUCKET_NAME = 'private-images';
@@ -130,6 +131,32 @@ class MediaService {
         throw error;
       }
       console.log('✅ Registro creado:', data);
+
+      // 7. Enviar notificación push al destinatario
+      try {
+        const { data: recipientData } = await supabase
+          .from('users')
+          .select('push_token, name')
+          .eq('id', toUserId)
+          .single();
+
+        const { data: senderData } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+
+        if (recipientData?.push_token && senderData?.name) {
+          await notificationService.sendImageNotification(
+            recipientData.push_token,
+            senderData.name
+          );
+          console.log('✅ Notificación de imagen enviada');
+        }
+      } catch (notifError) {
+        console.error('⚠️ Error enviando notificación (no crítico):', notifError);
+        // No lanzar error, la imagen ya se envió correctamente
+      }
 
       return data as PrivateImage;
     } catch (error) {

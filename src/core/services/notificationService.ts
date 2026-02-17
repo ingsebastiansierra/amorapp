@@ -1,0 +1,312 @@
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
+import { supabase } from '@/core/config/supabase';
+import { EmotionalState, EMOTIONAL_STATES } from '@/core/types/emotions';
+
+// Configurar el comportamiento de las notificaciones
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+    }),
+});
+
+export interface NotificationData {
+    type: 'emotion_change' | 'sync_detected' | 'message_received' | 'image_received' | 'voice_received';
+    emotion?: string;
+    partnerId?: string;
+    partnerName?: string;
+    messageId?: string;
+    screen?: string;
+}
+
+class NotificationService {
+    private expoPushToken: string | null = null;
+
+    /**
+     * Inicializar y registrar el dispositivo para notificaciones
+     */
+    async initialize(userId: string): Promise<string | null> {
+        try {
+            // Verificar si es un dispositivo físico
+            if (!Device.isDevice) {
+                console.log('⚠️ Las notificaciones push solo funcionan en dispositivos físicos');
+                return null;
+            }
+
+            // Solicitar permisos
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+
+            if (existingStatus !== 'granted') {
+                const { status } = await Notifications.requestPermissionsAsync();
+                finalStatus = status;
+            }
+
+            if (finalStatus !== 'granted') {
+                console.log('❌ Permisos de notificación denegados');
+                return null;
+            }
+
+            // Obtener el token de Expo Push
+            const tokenData = await Notifications.getExpoPushTokenAsync({
+                projectId: 'abcd9d33-058f-4176-957c-ae4f785bf3d4',
+            });
+
+            this.expoPushToken = tokenData.data;
+            console.log('✅ Push token obtenido:', this.expoPushToken);
+
+            // Guardar el token en la base de datos
+            await this.saveTokenToDatabase(userId, this.expoPushToken);
+
+            // Configurar canal de notificaciones para Android
+            if (Platform.OS === 'android') {
+                await Notifications.setNotificationChannelAsync('default', {
+                    name: 'default',
+                    importance: Notifications.AndroidImportance.MAX,
+                    vibrationPattern: [0, 250, 250, 250],
+                    lightColor: '#EB477E',
+                });
+            }
+
+            return this.expoPushToken;
+        } catch (error) {
+            console.error('❌ Error inicializando notificaciones:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Guardar el token en la base de datos
+     */
+    private async saveTokenToDatabase(userId: string, token: string): Promise<void> {
+        try {
+            const { error } = await supabase
+                .from('users')
+                .update({ 
+                    push_token: token,
+                    push_token_updated_at: new Date().toISOString()
+                })
+                .eq('id', userId);
+
+            if (error) {
+                console.error('❌ Error guardando token:', error);
+            } else {
+                console.log('✅ Token guardado en BD');
+            }
+        } catch (error) {
+            console.error('❌ Error guardando token:', error);
+        }
+    }
+
+    /**
+     * Enviar notificación de cambio de emoción
+     */
+    async sendEmotionChangeNotification(
+        partnerToken: string,
+        partnerName: string,
+        newEmotion: EmotionalState
+    ): Promise<void> {
+        const emotionConfig = EMOTIONAL_STATES[newEmotion];
+        
+        await this.sendPushNotification({
+            to: partnerToken,
+            title: `💭 ${partnerName} cambió su estado`,
+            body: `Ahora se siente: ${emotionConfig.label} ${emotionConfig.emoji}`,
+            data: {
+                type: 'emotion_change',
+                emotion: newEmotion,
+                screen: 'home',
+            },
+            sound: 'default',
+            priority: 'default',
+            badge: 1,
+        });
+    }
+
+    /**
+     * Enviar notificación de sincronización detectada
+     */
+    async sendSyncDetectedNotification(
+        partnerToken: string,
+        partnerName: string,
+        emotion: EmotionalState
+    ): Promise<void> {
+        const emotionConfig = EMOTIONAL_STATES[emotion];
+        
+        await this.sendPushNotification({
+            to: partnerToken,
+            title: '✨ ¡Están sincronizados!',
+            body: `Ambos se sienten: ${emotionConfig.label} ${emotionConfig.emoji} - Hablen ahora`,
+            data: {
+                type: 'sync_detected',
+                emotion,
+                screen: 'messages',
+            },
+            sound: 'default',
+            priority: 'high',
+            badge: 1,
+        });
+    }
+
+    /**
+     * Enviar notificación de mensaje recibido
+     */
+    async sendMessageNotification(
+        partnerToken: string,
+        partnerName: string,
+        messagePreview: string,
+        emotion: EmotionalState
+    ): Promise<void> {
+        const emotionConfig = EMOTIONAL_STATES[emotion];
+        
+        await this.sendPushNotification({
+            to: partnerToken,
+            title: `💌 ${partnerName} (${emotionConfig.emoji} ${emotionConfig.label})`,
+            body: messagePreview,
+            data: {
+                type: 'message_received',
+                emotion,
+                screen: 'messages',
+            },
+            sound: 'default',
+            priority: 'high',
+            badge: 1,
+        });
+    }
+
+    /**
+     * Enviar notificación de imagen privada recibida
+     */
+    async sendImageNotification(
+        partnerToken: string,
+        partnerName: string
+    ): Promise<void> {
+        await this.sendPushNotification({
+            to: partnerToken,
+            title: `📸 ${partnerName} te envió una foto`,
+            body: 'Foto privada - Toca para ver (una vez)',
+            data: {
+                type: 'image_received',
+                screen: 'messages',
+            },
+            sound: 'default',
+            priority: 'high',
+            badge: 1,
+        });
+    }
+
+    /**
+     * Enviar notificación de nota de voz recibida
+     */
+    async sendVoiceNoteNotification(
+        partnerToken: string,
+        partnerName: string,
+        duration: number
+    ): Promise<void> {
+        const durationStr = this.formatDuration(duration);
+        
+        await this.sendPushNotification({
+            to: partnerToken,
+            title: `🎤 ${partnerName} te envió una nota de voz`,
+            body: `Nota de voz (${durationStr})`,
+            data: {
+                type: 'voice_received',
+                screen: 'voice-notes',
+            },
+            sound: 'default',
+            priority: 'high',
+            badge: 1,
+        });
+    }
+
+    /**
+     * Enviar notificación push usando Expo Push API
+     */
+    private async sendPushNotification(notification: {
+        to: string;
+        title: string;
+        body: string;
+        data?: NotificationData;
+        sound?: string;
+        priority?: 'default' | 'high';
+        badge?: number;
+    }): Promise<void> {
+        try {
+            const message = {
+                to: notification.to,
+                sound: notification.sound || 'default',
+                title: notification.title,
+                body: notification.body,
+                data: notification.data || {},
+                priority: notification.priority || 'default',
+                badge: notification.badge,
+            };
+
+            const response = await fetch('https://exp.host/--/api/v2/push/send', {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Accept-encoding': 'gzip, deflate',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(message),
+            });
+
+            const result = await response.json();
+            
+            if (result.data?.status === 'error') {
+                console.error('❌ Error enviando notificación:', result.data.message);
+            } else {
+                console.log('✅ Notificación enviada:', notification.title);
+            }
+        } catch (error) {
+            console.error('❌ Error enviando push notification:', error);
+        }
+    }
+
+    /**
+     * Formatear duración de audio
+     */
+    private formatDuration(seconds: number): string {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    /**
+     * Limpiar badge de notificaciones
+     */
+    async clearBadge(): Promise<void> {
+        await Notifications.setBadgeCountAsync(0);
+    }
+
+    /**
+     * Configurar listener para notificaciones recibidas
+     */
+    addNotificationReceivedListener(
+        callback: (notification: Notifications.Notification) => void
+    ): Notifications.Subscription {
+        return Notifications.addNotificationReceivedListener(callback);
+    }
+
+    /**
+     * Configurar listener para cuando el usuario toca una notificación
+     */
+    addNotificationResponseListener(
+        callback: (response: Notifications.NotificationResponse) => void
+    ): Notifications.Subscription {
+        return Notifications.addNotificationResponseReceivedListener(callback);
+    }
+
+    /**
+     * Obtener el token actual
+     */
+    getToken(): string | null {
+        return this.expoPushToken;
+    }
+}
+
+export const notificationService = new NotificationService();

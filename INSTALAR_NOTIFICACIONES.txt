@@ -1,0 +1,136 @@
+╔══════════════════════════════════════════════════════════════╗
+║  🔔 SISTEMA DE NOTIFICACIONES PUSH - INSTALACIÓN RÁPIDA     ║
+╚══════════════════════════════════════════════════════════════╝
+
+✅ CÓDIGO YA IMPLEMENTADO - Solo necesitas 3 pasos:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PASO 1: APLICAR MIGRACIÓN DE BASE DE DATOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Abre Supabase Dashboard
+2. Ve a SQL Editor
+3. Copia y pega este SQL:
+
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS push_token TEXT,
+ADD COLUMN IF NOT EXISTS push_token_updated_at TIMESTAMP WITH TIME ZONE;
+
+CREATE INDEX IF NOT EXISTS idx_users_push_token 
+ON users(push_token) WHERE push_token IS NOT NULL;
+
+4. Ejecuta (Run)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PASO 2: INSTALAR DEPENDENCIAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+En tu terminal:
+
+npm install
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PASO 3: PROBAR EN DISPOSITIVOS FÍSICOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ IMPORTANTE: Las notificaciones NO funcionan en simuladores
+
+Necesitas:
+- 2 teléfonos físicos (Android o iOS)
+- Expo Go instalado en ambos
+
+Pasos:
+1. npm start
+2. Escanea el QR en ambos teléfonos
+3. Inicia sesión con 2 usuarios diferentes
+4. Vincula las cuentas como pareja
+5. Acepta permisos de notificaciones
+6. Prueba cambiar el estado emocional
+7. ¡Deberías recibir notificación en el otro teléfono!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOTIFICACIONES IMPLEMENTADAS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Cambio de estado emocional
+   "💭 María cambió su estado"
+   "Ahora se siente: Triste 😢"
+
+✅ Sincronización detectada
+   "✨ ¡Están sincronizados!"
+   "Ambos se sienten: Triste 😢 - Hablen ahora"
+
+✅ Mensaje recibido
+   "💌 María (😢 Triste)"
+   "Yo también me siento así..."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+VERIFICAR QUE FUNCIONA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+En Supabase SQL Editor:
+
+SELECT name, push_token IS NOT NULL as tiene_token 
+FROM users;
+
+Deberías ver "true" en tiene_token después de abrir la app.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TROUBLESHOOTING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ "No recibo notificaciones"
+   → Verifica permisos en Configuración del teléfono
+   → Solo funciona en dispositivos físicos
+   → Verifica que ambos usuarios estén vinculados
+
+❌ "Push token not found"
+   → Estás usando simulador (no funciona)
+   → Actualiza Expo Go a la última versión
+
+❌ "Invalid credentials"
+   → El Project ID ya está configurado correctamente
+   → Si persiste, verifica app.json
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ARCHIVOS CREADOS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📁 src/core/services/notificationService.ts
+📁 src/shared/hooks/useNotifications.ts
+📁 supabase/migrations/015_add_push_tokens.sql
+📁 supabase/APLICAR_PUSH_TOKENS.sql
+
+📄 NOTIFICACIONES_PUSH.md (documentación completa)
+📄 CONFIGURAR_NOTIFICACIONES.md (guía rápida)
+📄 RESUMEN_NOTIFICACIONES.md (resumen ejecutivo)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ARCHIVOS MODIFICADOS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✏️ app/(app)/home.tsx
+✏️ app/(app)/messages.tsx
+✏️ app/(app)/_layout.tsx
+✏️ package.json
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 ¡LISTO! Con estos 3 pasos tendrás notificaciones funcionando.
+
+Las notificaciones son CRÍTICAS para engagement y retención.
+Con esto implementado, las parejas se mantendrán conectadas 24/7.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿Dudas? Lee CONFIGURAR_NOTIFICACIONES.md para más detalles.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
