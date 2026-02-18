@@ -1,6 +1,6 @@
 import React from 'react';
-import { PrivateMediaScreen } from '@/features/private-media/PrivateMediaScreen';
+import { PersonalGalleryScreen } from '@/features/gallery/PersonalGalleryScreen';
 
 export default function PrivateImagesPage() {
-    return <PrivateMediaScreen />;
+    return <PersonalGalleryScreen />;
 }
