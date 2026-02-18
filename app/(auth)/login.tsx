@@ -1,17 +1,146 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, Modal, ScrollView, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@core/store/useAuthStore';
+import * as Haptics from 'expo-haptics';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [showForgotPassword, setShowForgotPassword] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
     const { signIn, enterDemoMode, demoMode } = useAuthStore();
     const router = useRouter();
+
+    // Animaciones para los corazones flotantes
+    const heart1Rotate = useRef(new Animated.Value(0)).current;
+    const heart1Scale = useRef(new Animated.Value(1)).current;
+    const heart2Rotate = useRef(new Animated.Value(0)).current;
+    const heart2Scale = useRef(new Animated.Value(1)).current;
+    const heart3Rotate = useRef(new Animated.Value(0)).current;
+    const heart3Scale = useRef(new Animated.Value(1)).current;
+    const logoScale = useRef(new Animated.Value(1)).current;
+    const borderRotate = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        // Animación del logo (pulso suave)
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(logoScale, {
+                    toValue: 1.05,
+                    duration: 2000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(logoScale, {
+                    toValue: 1,
+                    duration: 2000,
+                    useNativeDriver: true,
+                }),
+            ])
+        ).start();
+
+        // Animación del borde del formulario (rotación continua)
+        Animated.loop(
+            Animated.timing(borderRotate, {
+                toValue: 1,
+                duration: 3000,
+                useNativeDriver: true,
+            })
+        ).start();
+
+        // Animación corazón 1 (rotación y escala)
+        Animated.loop(
+            Animated.parallel([
+                Animated.timing(heart1Rotate, {
+                    toValue: 1,
+                    duration: 4000,
+                    useNativeDriver: true,
+                }),
+                Animated.sequence([
+                    Animated.timing(heart1Scale, {
+                        toValue: 1.2,
+                        duration: 2000,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(heart1Scale, {
+                        toValue: 1,
+                        duration: 2000,
+                        useNativeDriver: true,
+                    }),
+                ]),
+            ])
+        ).start();
+
+        // Animación corazón 2 (rotación inversa)
+        Animated.loop(
+            Animated.parallel([
+                Animated.timing(heart2Rotate, {
+                    toValue: 1,
+                    duration: 5000,
+                    useNativeDriver: true,
+                }),
+                Animated.sequence([
+                    Animated.timing(heart2Scale, {
+                        toValue: 1.3,
+                        duration: 2500,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(heart2Scale, {
+                        toValue: 1,
+                        duration: 2500,
+                        useNativeDriver: true,
+                    }),
+                ]),
+            ])
+        ).start();
+
+        // Animación corazón 3
+        Animated.loop(
+            Animated.parallel([
+                Animated.timing(heart3Rotate, {
+                    toValue: 1,
+                    duration: 6000,
+                    useNativeDriver: true,
+                }),
+                Animated.sequence([
+                    Animated.timing(heart3Scale, {
+                        toValue: 1.15,
+                        duration: 3000,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(heart3Scale, {
+                        toValue: 1,
+                        duration: 3000,
+                        useNativeDriver: true,
+                    }),
+                ]),
+            ])
+        ).start();
+    }, []);
+
+    const heart1RotateInterpolate = heart1Rotate.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '360deg'],
+    });
+
+    const heart2RotateInterpolate = heart2Rotate.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['360deg', '0deg'],
+    });
+
+    const heart3RotateInterpolate = heart3Rotate.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '360deg'],
+    });
+
+    const borderRotateInterpolate = borderRotate.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '360deg'],
+    });
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -22,8 +151,10 @@ export default function LoginScreen() {
         setLoading(true);
         try {
             await signIn(email, password);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             router.replace('/(app)/home');
         } catch (error: any) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             Alert.alert('Error', error.message);
         } finally {
             setLoading(false);
@@ -31,6 +162,7 @@ export default function LoginScreen() {
     };
 
     const handleSignUp = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         router.push('/(auth)/register');
     };
 
@@ -78,82 +210,233 @@ export default function LoginScreen() {
     };
 
     return (
-        <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
-            <View style={styles.content}>
-                <View style={styles.logoContainer}>
-                    <Text style={styles.logo}>💕</Text>
-                </View>
-                <Text style={styles.title}>Palpitos</Text>
-                <Text style={styles.subtitle}>Conecta con tu pareja emocionalmente</Text>
+        <LinearGradient
+            colors={['#667eea', '#764ba2', '#f093fb']}
+            style={styles.container}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+        >
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
+                {/* Logo y Título */}
+                <View style={styles.header}>
+                    <View style={styles.logoContainer}>
+                        {/* Iconos flotantes animados */}
+                        <Animated.View
+                            style={[
+                                styles.floatingHeart,
+                                styles.floatingHeart1,
+                                {
+                                    transform: [
+                                        { rotate: heart1RotateInterpolate },
+                                        { scale: heart1Scale },
+                                    ],
+                                },
+                            ]}
+                        >
+                            <Ionicons name="heart" size={24} color="#f093fb" />
+                        </Animated.View>
 
-                {demoMode && (
-                    <View style={styles.demoWarning}>
-                        <Text style={styles.demoWarningText}>
-                            ⚠️ Modo Demo
-                        </Text>
-                        <Text style={styles.demoWarningSubtext}>
-                            Configura Supabase para usar la app completa (ver SETUP.md)
-                        </Text>
+                        <Animated.View
+                            style={[
+                                styles.floatingHeart,
+                                styles.floatingHeart2,
+                                {
+                                    transform: [
+                                        { rotate: heart2RotateInterpolate },
+                                        { scale: heart2Scale },
+                                    ],
+                                },
+                            ]}
+                        >
+                            <Ionicons name="chatbubble-ellipses" size={20} color="#a8b5ff" />
+                        </Animated.View>
+
+                        <Animated.View
+                            style={[
+                                styles.floatingHeart,
+                                styles.floatingHeart3,
+                                {
+                                    transform: [
+                                        { rotate: heart3RotateInterpolate },
+                                        { scale: heart3Scale },
+                                    ],
+                                },
+                            ]}
+                        >
+                            <Ionicons name="sparkles" size={18} color="#764ba2" />
+                        </Animated.View>
+
+                        {/* Logo principal con animación */}
+                        <Animated.View
+                            style={[
+                                styles.logoCircle,
+                                {
+                                    transform: [{ scale: logoScale }],
+                                },
+                            ]}
+                        >
+                            <Ionicons name="people" size={60} color="#667eea" />
+                        </Animated.View>
                     </View>
-                )}
+                    <Text style={styles.title}>Palpitos</Text>
+                    <Text style={styles.subtitle}>Conéctate con tu persona favorita</Text>
+                </View>
 
-                <TextInput
-                    style={styles.input}
-                    placeholder="Email"
-                    placeholderTextColor="#CBD5E0"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    editable={!demoMode}
-                />
+                {/* Card de Login */}
+                <View style={styles.cardWrapper}>
+                    {/* Borde animado con destello */}
+                    <Animated.View
+                        style={[
+                            styles.animatedBorder,
+                            {
+                                transform: [{ rotate: borderRotateInterpolate }],
+                            },
+                        ]}
+                    >
+                        <LinearGradient
+                            colors={['#667eea', '#a8b5ff', '#FFFFFF', '#a8b5ff', '#667eea']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.borderGradient}
+                        />
+                    </Animated.View>
 
-                <TextInput
-                    style={styles.input}
-                    placeholder="Contraseña"
-                    placeholderTextColor="#CBD5E0"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    editable={!demoMode}
-                />
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>¡Hola de nuevo!</Text>
 
-                {!demoMode ? (
-                    <>
-                        <Pressable
-                            style={[styles.button, loading && styles.buttonDisabled]}
-                            onPress={handleLogin}
-                            disabled={loading}
-                        >
-                            <Text style={styles.buttonText}>
-                                {loading ? 'Entrando...' : 'Entrar'}
-                            </Text>
-                        </Pressable>
+                        {demoMode && (
+                            <View style={styles.demoWarning}>
+                                <Text style={styles.demoWarningText}>⚠️ Modo Demo</Text>
+                                <Text style={styles.demoWarningSubtext}>
+                                    Configura Supabase para usar la app completa
+                                </Text>
+                            </View>
+                        )}
 
-                        <Pressable
-                            style={styles.buttonSecondary}
-                            onPress={handleSignUp}
-                        >
-                            <Text style={styles.buttonSecondaryText}>
-                                Crear Cuenta
-                            </Text>
-                        </Pressable>
+                        {/* Email Input */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Correo electrónico</Text>
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="tu@email.com"
+                                    placeholderTextColor="#CCC"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                    editable={!demoMode}
+                                />
+                            </View>
+                        </View>
 
-                        <Pressable
-                            style={styles.forgotPasswordButton}
-                            onPress={() => setShowForgotPassword(true)}
-                        >
-                            <Text style={styles.forgotPasswordText}>
-                                ¿Olvidaste tu contraseña?
-                            </Text>
-                        </Pressable>
-                    </>
-                ) : (
-                    <Pressable style={styles.button} onPress={handleDemoMode}>
-                        <Text style={styles.buttonText}>Probar Modo Demo</Text>
+                        {/* Password Input */}
+                        <View style={styles.inputGroup}>
+                            <View style={styles.passwordHeader}>
+                                <Text style={styles.inputLabel}>Contraseña</Text>
+                                <Pressable onPress={() => setShowForgotPassword(true)}>
+                                    <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+                                </Pressable>
+                            </View>
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="••••••••"
+                                    placeholderTextColor="#CCC"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry={!showPassword}
+                                    editable={!demoMode}
+                                />
+                                <Pressable
+                                    onPress={() => setShowPassword(!showPassword)}
+                                    style={styles.eyeIcon}
+                                >
+                                    <Ionicons
+                                        name={showPassword ? "eye-outline" : "eye-off-outline"}
+                                        size={20}
+                                        color="#999"
+                                    />
+                                </Pressable>
+                            </View>
+                        </View>
+
+                        {/* Login Button */}
+                        {!demoMode ? (
+                            <Pressable
+                                style={[styles.loginButton, loading && styles.buttonDisabled]}
+                                onPress={handleLogin}
+                                disabled={loading}
+                            >
+                                <LinearGradient
+                                    colors={['#667eea', '#764ba2']}
+                                    style={styles.loginButtonGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                >
+                                    <Text style={styles.loginButtonText}>
+                                        {loading ? 'Entrando...' : 'Entrar'}
+                                    </Text>
+                                    <Ionicons name="arrow-forward" size={20} color="#FFF" />
+                                </LinearGradient>
+                            </Pressable>
+                        ) : (
+                            <Pressable style={styles.loginButton} onPress={handleDemoMode}>
+                                <LinearGradient
+                                    colors={['#667eea', '#764ba2']}
+                                    style={styles.loginButtonGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                >
+                                    <Text style={styles.loginButtonText}>Probar Modo Demo</Text>
+                                </LinearGradient>
+                            </Pressable>
+                        )}
+
+                        {/* Divider */}
+                        <View style={styles.divider}>
+                            <View style={styles.dividerLine} />
+                            <Text style={styles.dividerText}>O CONTINÚA CON</Text>
+                            <View style={styles.dividerLine} />
+                        </View>
+
+                        {/* Social Buttons */}
+                        <View style={styles.socialButtons}>
+                            <Pressable style={styles.socialButton}>
+                                <Ionicons name="logo-google" size={20} color="#4285F4" />
+                                <Text style={styles.socialButtonText}>Google</Text>
+                            </Pressable>
+                            <Pressable style={styles.socialButton}>
+                                <Ionicons name="logo-apple" size={20} color="#000" />
+                                <Text style={styles.socialButtonText}>Apple</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Sign Up Link */}
+                <View style={styles.signupContainer}>
+                    <Text style={styles.signupText}>¿No tienes cuenta? </Text>
+                    <Pressable onPress={handleSignUp}>
+                        <Text style={styles.signupLink}>Crear Cuenta</Text>
                     </Pressable>
-                )}
-            </View>
+                </View>
+
+                {/* Footer Links */}
+                <View style={styles.footer}>
+                    <Text style={styles.footerLink}>PRIVACIDAD</Text>
+                    <Text style={styles.footerDot}>•</Text>
+                    <Text style={styles.footerLink}>TÉRMINOS</Text>
+                    <Text style={styles.footerDot}>•</Text>
+                    <Text style={styles.footerLink}>SOPORTE</Text>
+                </View>
+            </ScrollView>
 
             {/* Modal de recuperar contraseña */}
             <Modal
@@ -175,24 +458,34 @@ export default function LoginScreen() {
                             Ingresa tu email y te enviaremos un código de verificación
                         </Text>
 
-                        <TextInput
-                            style={styles.modalInput}
-                            placeholder="Email"
-                            placeholderTextColor="#999"
-                            value={resetEmail}
-                            onChangeText={setResetEmail}
-                            autoCapitalize="none"
-                            keyboardType="email-address"
-                        />
+                        <View style={styles.modalInputContainer}>
+                            <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="tu@email.com"
+                                placeholderTextColor="#999"
+                                value={resetEmail}
+                                onChangeText={setResetEmail}
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                            />
+                        </View>
 
                         <Pressable
                             style={[styles.modalButton, loading && styles.buttonDisabled]}
                             onPress={handleForgotPassword}
                             disabled={loading}
                         >
-                            <Text style={styles.modalButtonText}>
-                                {loading ? 'Enviando...' : 'Enviar Código'}
-                            </Text>
+                            <LinearGradient
+                                colors={['#667eea', '#764ba2']}
+                                style={styles.modalButtonGradient}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                            >
+                                <Text style={styles.modalButtonText}>
+                                    {loading ? 'Enviando...' : 'Enviar Código'}
+                                </Text>
+                            </LinearGradient>
                         </Pressable>
 
                         <Pressable
@@ -207,7 +500,7 @@ export default function LoginScreen() {
                     </Pressable>
                 </Pressable>
             </Modal>
-        </LinearGradient>
+        </LinearGradient >
     );
 }
 
@@ -215,102 +508,254 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    content: {
-        flex: 1,
-        justifyContent: 'center',
-        padding: 24,
+    scrollContent: {
+        flexGrow: 1,
+        paddingTop: 60,
+        paddingBottom: 40,
+        paddingHorizontal: 24,
+    },
+    header: {
+        alignItems: 'center',
+        marginBottom: 40,
     },
     logoContainer: {
+        position: 'relative',
+        width: 200,
+        height: 200,
+        justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 20,
     },
-    logo: {
-        fontSize: 80,
-        textShadowColor: 'rgba(0, 0, 0, 0.3)',
-        textShadowOffset: { width: 0, height: 4 },
-        textShadowRadius: 8,
+    logoCircle: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: '#FFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#667eea',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 10,
+    },
+    floatingHeart: {
+        position: 'absolute',
+    },
+    floatingHeart1: {
+        top: 20,
+        right: 30,
+    },
+    floatingHeart2: {
+        bottom: 30,
+        left: 20,
+    },
+    floatingHeart3: {
+        top: 60,
+        left: 10,
     },
     title: {
-        fontSize: 42,
-        fontWeight: 'bold',
+        fontSize: 36,
+        fontWeight: '700',
         color: '#FFF',
-        textAlign: 'center',
         marginBottom: 8,
-        textShadowColor: 'rgba(0, 0, 0, 0.2)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 4,
     },
     subtitle: {
-        fontSize: 16,
+        fontSize: 15,
         color: '#FFF',
         textAlign: 'center',
-        marginBottom: 48,
-        opacity: 0.9,
+    },
+    cardWrapper: {
+        position: 'relative',
+        marginBottom: 24,
+        padding: 3,
+    },
+    animatedBorder: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: 27,
+        overflow: 'hidden',
+    },
+    borderGradient: {
+        flex: 1,
+        borderRadius: 27,
+    },
+    card: {
+        backgroundColor: '#FFF',
+        borderRadius: 24,
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 5,
+    },
+    cardTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#2D3748',
+        marginBottom: 24,
+        textAlign: 'center',
     },
     demoWarning: {
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        backgroundColor: '#FFF3CD',
         borderRadius: 12,
-        padding: 16,
-        marginBottom: 24,
+        padding: 12,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#FFE69C',
     },
     demoWarningText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#FFF',
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#856404',
         textAlign: 'center',
         marginBottom: 4,
     },
     demoWarningSubtext: {
         fontSize: 12,
-        color: '#FFF',
+        color: '#856404',
         textAlign: 'center',
-        opacity: 0.9,
+    },
+    inputGroup: {
+        marginBottom: 20,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#4A5568',
+        marginBottom: 8,
+    },
+    passwordHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    forgotText: {
+        fontSize: 13,
+        color: '#667eea',
+        fontWeight: '500',
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F7FAFC',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingHorizontal: 16,
+    },
+    inputIcon: {
+        marginRight: 12,
     },
     input: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        borderRadius: 12,
-        padding: 16,
-        fontSize: 16,
-        color: '#FFF',
-        marginBottom: 16,
+        flex: 1,
+        paddingVertical: 14,
+        fontSize: 15,
+        color: '#2D3748',
     },
-    button: {
-        backgroundColor: '#FFF',
-        borderRadius: 12,
-        padding: 16,
-        alignItems: 'center',
+    eyeIcon: {
+        padding: 8,
+    },
+    loginButton: {
+        borderRadius: 16,
+        overflow: 'hidden',
         marginTop: 8,
+        shadowColor: '#667eea',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    loginButtonGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 16,
+        gap: 8,
+    },
+    loginButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFF',
     },
     buttonDisabled: {
         opacity: 0.6,
     },
-    buttonText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#667eea',
+    divider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 24,
     },
-    buttonSecondary: {
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderColor: '#FFF',
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#E2E8F0',
+    },
+    dividerText: {
+        fontSize: 11,
+        color: '#A0AEC0',
+        fontWeight: '600',
+        marginHorizontal: 12,
+        letterSpacing: 0.5,
+    },
+    socialButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    socialButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F7FAFC',
         borderRadius: 12,
-        padding: 16,
-        alignItems: 'center',
-        marginTop: 12,
+        paddingVertical: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        gap: 8,
     },
-    buttonSecondaryText: {
-        fontSize: 18,
+    socialButtonText: {
+        fontSize: 14,
         fontWeight: '600',
-        color: '#FFF',
+        color: '#4A5568',
     },
-    forgotPasswordButton: {
-        marginTop: 16,
+    signupContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
         alignItems: 'center',
+        marginTop: 24,
     },
-    forgotPasswordText: {
+    signupText: {
         fontSize: 14,
         color: '#FFF',
+    },
+    signupLink: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#FFF',
         textDecorationLine: 'underline',
+    },
+    footer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 24,
+        gap: 8,
+    },
+    footerLink: {
+        fontSize: 11,
+        color: '#FFF',
+        fontWeight: '600',
+        letterSpacing: 0.5,
+    },
+    footerDot: {
+        fontSize: 11,
+        color: '#FFF',
     },
     modalOverlay: {
         flex: 1,
@@ -321,15 +766,15 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         backgroundColor: '#FFF',
-        borderRadius: 20,
+        borderRadius: 24,
         padding: 24,
         width: '100%',
         maxWidth: 400,
     },
     modalTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#1A202C',
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#2D3748',
         marginBottom: 8,
         textAlign: 'center',
     },
@@ -340,22 +785,30 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 20,
     },
-    modalInput: {
+    modalInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
         backgroundColor: '#F7FAFC',
         borderRadius: 12,
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        padding: 16,
-        fontSize: 16,
-        color: '#1A202C',
-        marginBottom: 16,
+        paddingHorizontal: 16,
+        marginBottom: 20,
+    },
+    modalInput: {
+        flex: 1,
+        paddingVertical: 14,
+        fontSize: 15,
+        color: '#2D3748',
     },
     modalButton: {
-        backgroundColor: '#667eea',
         borderRadius: 12,
-        padding: 16,
-        alignItems: 'center',
+        overflow: 'hidden',
         marginBottom: 12,
+    },
+    modalButtonGradient: {
+        paddingVertical: 14,
+        alignItems: 'center',
     },
     modalButtonText: {
         fontSize: 16,
@@ -369,5 +822,6 @@ const styles = StyleSheet.create({
     modalCancelText: {
         fontSize: 14,
         color: '#718096',
+        fontWeight: '500',
     },
 });

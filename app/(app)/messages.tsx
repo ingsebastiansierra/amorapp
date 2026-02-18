@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ScreenCapture from 'expo-screen-capture';
 import * as ImagePicker from 'expo-image-picker';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/core/store/useAuthStore';
 import { supabase } from '@/core/config/supabase';
@@ -18,6 +19,7 @@ import { VoiceMessagePlayer } from '@/shared/components/VoiceMessagePlayer';
 import { mediaService } from '@/core/services/mediaService';
 import { notificationService } from '@/core/services/notificationService';
 import { useChatBackgroundStore } from '@/core/store/useChatBackgroundStore';
+import { getMessageThemeColors } from '@/core/config/messageThemes';
 
 const { width, height } = Dimensions.get('window');
 
@@ -60,7 +62,28 @@ export default function MessagesScreen() {
     const [viewingImage, setViewingImage] = useState<{ id: string; url: string; caption?: string } | null>(null);
     const [isLoadingImage, setIsLoadingImage] = useState(false);
     const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
-    const { backgroundImage, backgroundOpacity, setBackgroundImage, setBackgroundOpacity, loadBackground, clearBackground } = useChatBackgroundStore();
+    const { backgroundImage, backgroundOpacity, messageColorTheme, setBackgroundImage, setBackgroundOpacity, loadBackground, clearBackground } = useChatBackgroundStore();
+
+    // Obtener colores del tema seleccionado
+    const themeColors = getMessageThemeColors(messageColorTheme);
+
+    // Función para reproducir sonido de envío
+    const playSendSound = async () => {
+        try {
+            // Configurar el modo de audio
+            await Audio.setAudioModeAsync({
+                playsInSilentModeIOS: false,
+                staysActiveInBackground: false,
+            });
+
+            // Crear un efecto de sonido con haptics en secuencia
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 50);
+        } catch (error) {
+            // Fallback a solo haptics
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+    };
 
     useEffect(() => {
         loadMyProfile();
@@ -428,7 +451,8 @@ export default function MessagesScreen() {
                 );
             }
 
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            // Reproducir sonido y haptic feedback
+            await playSendSound();
             setNewMessage('');
             loadMessages(); // Recargar mensajes inmediatamente
         } catch (error) {
@@ -558,7 +582,7 @@ export default function MessagesScreen() {
 
                 <View style={[
                     styles.messageBubble,
-                    isFromMe ? styles.messageBubbleMe : styles.messageBubblePartner,
+                    isFromMe ? [styles.messageBubbleMe, { backgroundColor: themeColors.sentBackground }] : [styles.messageBubblePartner, { backgroundColor: themeColors.receivedBackground }],
                     isImage && styles.messageBubbleImage,
                     isVoice && styles.messageBubbleVoice
                 ]}>
@@ -585,7 +609,7 @@ export default function MessagesScreen() {
                         />
                     ) : isImage ? (
                         <View>
-                            <Text style={[styles.messageText, isFromMe && styles.messageTextMe]}>
+                            <Text style={[styles.messageText, isFromMe ? { color: themeColors.sentText } : { color: themeColors.receivedText }]}>
                                 {msg.message}
                             </Text>
                             {msg.image_expired ? (
@@ -603,7 +627,7 @@ export default function MessagesScreen() {
                             )}
                         </View>
                     ) : (
-                        <Text style={[styles.messageText, isFromMe && styles.messageTextMe]}>
+                        <Text style={[styles.messageText, isFromMe ? { color: themeColors.sentText } : { color: themeColors.receivedText }]}>
                             {msg.message}
                         </Text>
                     )}

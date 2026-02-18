@@ -13,12 +13,22 @@ if (!isExpoGo) {
     Notifications = require('expo-notifications');
     
     // Configurar el comportamiento de las notificaciones
+    // NO mostrar alertas cuando la app está en primer plano (foreground)
     Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-            shouldShowAlert: true,
-            shouldPlaySound: true,
-            shouldSetBadge: true,
-        }),
+        handleNotification: async (notification: any) => {
+            // Verificar si la notificación es de tipo mensaje/imagen/voz
+            const notificationType = notification.request.content.data?.type;
+            const isMessageType = ['message_received', 'image_received', 'voice_received'].includes(notificationType);
+            
+            return {
+                // NO mostrar alerta si es un mensaje y la app está activa
+                shouldShowAlert: !isMessageType,
+                // Siempre reproducir sonido
+                shouldPlaySound: true,
+                // Siempre actualizar badge
+                shouldSetBadge: true,
+            };
+        },
     });
 }
 
@@ -168,6 +178,7 @@ class NotificationService {
 
     /**
      * Enviar notificación de mensaje recibido
+     * IMPORTANTE: Solo se envía al push_token de la PAREJA, nunca al usuario actual
      */
     async sendMessageNotification(
         partnerToken: string,
@@ -194,6 +205,7 @@ class NotificationService {
 
     /**
      * Enviar notificación de imagen privada recibida
+     * IMPORTANTE: Solo se envía al push_token de la PAREJA, nunca al usuario actual
      */
     async sendImageNotification(
         partnerToken: string,
@@ -215,6 +227,7 @@ class NotificationService {
 
     /**
      * Enviar notificación de nota de voz recibida
+     * IMPORTANTE: Solo se envía al push_token de la PAREJA, nunca al usuario actual
      */
     async sendVoiceNoteNotification(
         partnerToken: string,

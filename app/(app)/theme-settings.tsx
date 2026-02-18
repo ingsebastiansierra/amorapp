@@ -1,18 +1,65 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '@/core/store/useThemeStore';
+import { useChatBackgroundStore, MessageColorTheme, EmojiStyle } from '@/core/store/useChatBackgroundStore';
 import { THEMES, FREE_THEMES, PREMIUM_THEMES } from '@/core/config/themes';
 import { ThemeType } from '@/core/types/theme';
 import * as Haptics from 'expo-haptics';
+
+const COLOR_THEMES = [
+    {
+        id: 'classic-pink' as MessageColorTheme,
+        name: 'Classic Pink',
+        color: '#E91E63',
+    },
+    {
+        id: 'ocean-blue' as MessageColorTheme,
+        name: 'Ocean Blue',
+        color: '#2196F3',
+    },
+    {
+        id: 'midnight-purple' as MessageColorTheme,
+        name: 'Midnight Purple',
+        color: '#6A1B9A',
+    },
+    {
+        id: 'soft-green' as MessageColorTheme,
+        name: 'Soft Green',
+        color: '#388E3C',
+    },
+];
+
+const EMOJI_STYLES = [
+    {
+        id: 'modern' as EmojiStyle,
+        name: 'Moderno',
+        description: 'Brillante y detallado',
+        icon: '✨',
+    },
+    {
+        id: 'classic' as EmojiStyle,
+        name: 'Clásico',
+        description: 'Estilo estándar del sistema',
+        icon: '😊',
+    },
+    {
+        id: 'minimal' as EmojiStyle,
+        name: 'Minimalista',
+        description: 'Arte lineal y sobrio',
+        icon: '🤍',
+    },
+];
 
 export default function ThemeSettingsScreen() {
     const router = useRouter();
     const currentTheme = useThemeStore(state => state.currentTheme);
     const setTheme = useThemeStore(state => state.setTheme);
     const isPremium = useThemeStore(state => state.isPremium);
+    const { messageColorTheme, emojiStyle, setMessageColorTheme, setEmojiStyle } = useChatBackgroundStore();
+    const [hasChanges, setHasChanges] = useState(false);
 
     const handleThemeSelect = async (themeId: ThemeType) => {
         const theme = THEMES[themeId];
@@ -40,7 +87,26 @@ export default function ThemeSettingsScreen() {
         }
     };
 
+    const handleColorSelect = async (themeId: MessageColorTheme) => {
+        await setMessageColorTheme(themeId);
+        setHasChanges(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
+
+    const handleEmojiStyleSelect = async (styleId: EmojiStyle) => {
+        await setEmojiStyle(styleId);
+        setHasChanges(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
+
+    const handleSave = () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setHasChanges(false);
+        Alert.alert('✅ Guardado', 'Los cambios se aplicarán en el chat de mensajes');
+    };
+
     const headerTheme = THEMES[currentTheme];
+    const selectedColor = COLOR_THEMES.find(t => t.id === messageColorTheme) || COLOR_THEMES[0];
 
     return (
         <View style={styles.container}>
@@ -58,7 +124,100 @@ export default function ThemeSettingsScreen() {
                 <View style={styles.backButton} />
             </LinearGradient>
 
-            <ScrollView style={styles.content}>
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                {/* Vista Previa de Mensajes */}
+                <View style={styles.previewSection}>
+                    <Text style={styles.previewTitle}>VISTA PREVIA</Text>
+                    <View style={styles.previewContainer}>
+                        <View style={styles.sentMessageContainer}>
+                            <View style={[styles.sentMessage, { backgroundColor: selectedColor.color }]}>
+                                <Text style={styles.sentMessageText}>¡Hola amor! ¿Viste el nuevo tema?</Text>
+                                <Text style={styles.messageEmoji}>😍</Text>
+                            </View>
+                            <View style={[styles.heartIcon, { backgroundColor: selectedColor.color + '20' }]}>
+                                <Ionicons name="heart" size={20} color={selectedColor.color} />
+                            </View>
+                        </View>
+
+                        <View style={styles.receivedMessageContainer}>
+                            <View style={styles.avatarPlaceholder}>
+                                <Ionicons name="person" size={20} color="#999" />
+                            </View>
+                            <View style={styles.receivedMessage}>
+                                <Text style={styles.receivedMessageText}>Me encanta, el color se ve genial.</Text>
+                                <Text style={styles.messageEmoji}>❤️</Text>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Elige un Color */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Elige un Color</Text>
+
+                    <View style={styles.colorsGrid}>
+                        {COLOR_THEMES.map((theme) => {
+                            const isSelected = messageColorTheme === theme.id;
+
+                            return (
+                                <Pressable
+                                    key={theme.id}
+                                    style={[
+                                        styles.colorOption,
+                                        isSelected && [styles.colorOptionSelected, { borderColor: theme.color }]
+                                    ]}
+                                    onPress={() => handleColorSelect(theme.id)}
+                                >
+                                    <View style={[styles.colorCircle, { backgroundColor: theme.color }]} />
+                                    <Text style={styles.colorName}>{theme.name}</Text>
+                                    {isSelected && (
+                                        <View style={styles.checkIcon}>
+                                            <Ionicons name="checkmark-circle" size={24} color={theme.color} />
+                                        </View>
+                                    )}
+                                </Pressable>
+                            );
+                        })}
+                    </View>
+                </View>
+
+                {/* Estilo de Emoji */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Estilo de Emoji</Text>
+
+                    <View style={styles.emojiStylesContainer}>
+                        {EMOJI_STYLES.map((style) => {
+                            const isSelected = emojiStyle === style.id;
+
+                            return (
+                                <Pressable
+                                    key={style.id}
+                                    style={[
+                                        styles.emojiStyleOption,
+                                        isSelected && [styles.emojiStyleOptionSelected, { borderColor: selectedColor.color, backgroundColor: selectedColor.color + '10' }]
+                                    ]}
+                                    onPress={() => handleEmojiStyleSelect(style.id)}
+                                >
+                                    <View style={styles.emojiStyleLeft}>
+                                        <Text style={styles.emojiStyleIcon}>{style.icon}</Text>
+                                        <View style={styles.emojiStyleInfo}>
+                                            <Text style={styles.emojiStyleName}>{style.name}</Text>
+                                            <Text style={styles.emojiStyleDescription}>{style.description}</Text>
+                                        </View>
+                                    </View>
+                                    <View style={[
+                                        styles.radioButton,
+                                        isSelected && [styles.radioButtonSelected, { borderColor: selectedColor.color }]
+                                    ]}>
+                                        {isSelected && <View style={[styles.radioButtonInner, { backgroundColor: selectedColor.color }]} />}
+                                    </View>
+                                </Pressable>
+                            );
+                        })}
+                    </View>
+                </View>
+
+                {/* Temas Gratuitos */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Temas Gratuitos</Text>
@@ -105,6 +264,7 @@ export default function ThemeSettingsScreen() {
                     </View>
                 </View>
 
+                {/* Temas Premium */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Temas Premium</Text>
@@ -175,7 +335,25 @@ export default function ThemeSettingsScreen() {
                         </LinearGradient>
                     </Pressable>
                 )}
+
+                <View style={{ height: 40 }} />
             </ScrollView>
+
+            {/* Botón Guardar Cambios */}
+            {hasChanges && (
+                <View style={styles.saveButtonContainer}>
+                    <Pressable style={styles.saveButton} onPress={handleSave}>
+                        <LinearGradient
+                            colors={[selectedColor.color, selectedColor.color + 'CC']}
+                            style={styles.saveButtonGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                        >
+                            <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+                        </LinearGradient>
+                    </Pressable>
+                </View>
+            )}
         </View>
     );
 }
@@ -216,8 +394,91 @@ const styles = StyleSheet.create({
     content: {
         flex: 1
     },
+
+    // Vista Previa
+    previewSection: {
+        backgroundColor: '#FFF',
+        marginTop: 20,
+        marginHorizontal: 20,
+        borderRadius: 16,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    previewTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#E91E63',
+        letterSpacing: 1,
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    previewContainer: {
+        gap: 16,
+    },
+    sentMessageContainer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        gap: 8,
+    },
+    sentMessage: {
+        maxWidth: '75%',
+        borderRadius: 20,
+        borderTopRightRadius: 4,
+        padding: 12,
+        paddingHorizontal: 16,
+    },
+    sentMessageText: {
+        color: '#FFF',
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    messageEmoji: {
+        fontSize: 16,
+        marginTop: 4,
+    },
+    heartIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    receivedMessageContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    avatarPlaceholder: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#F0F0F0',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    receivedMessage: {
+        maxWidth: '75%',
+        borderRadius: 20,
+        borderTopLeftRadius: 4,
+        padding: 12,
+        paddingHorizontal: 16,
+        backgroundColor: '#F5F5F5',
+    },
+    receivedMessageText: {
+        color: '#333',
+        fontSize: 14,
+        lineHeight: 20,
+    },
+
+    // Secciones
     section: {
-        padding: 20
+        padding: 20,
+        paddingTop: 24,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -230,6 +491,110 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#111'
     },
+
+    // Colores
+    colorsGrid: {
+        gap: 12,
+    },
+    colorOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 2,
+        borderColor: '#F0F0F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    colorOptionSelected: {
+        backgroundColor: '#FFF5F8',
+    },
+    colorCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        marginRight: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    colorName: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+    },
+    checkIcon: {
+        marginLeft: 8,
+    },
+
+    // Estilos de Emoji
+    emojiStylesContainer: {
+        gap: 12,
+    },
+    emojiStyleOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 2,
+        borderColor: '#F0F0F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    emojiStyleOptionSelected: {
+    },
+    emojiStyleLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    emojiStyleIcon: {
+        fontSize: 32,
+        marginRight: 16,
+    },
+    emojiStyleInfo: {
+        flex: 1,
+    },
+    emojiStyleName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 2,
+    },
+    emojiStyleDescription: {
+        fontSize: 13,
+        color: '#999',
+    },
+    radioButton: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#DDD',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    radioButtonSelected: {
+    },
+    radioButtonInner: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+
+    // Temas de la App
     freeBadge: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -353,5 +718,35 @@ const styles = StyleSheet.create({
         color: '#FFF',
         textAlign: 'center',
         opacity: 0.9
-    }
+    },
+
+    // Botón Guardar
+    saveButtonContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: 20,
+        backgroundColor: '#F9FAFB',
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    saveButton: {
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    saveButtonGradient: {
+        paddingVertical: 16,
+        alignItems: 'center',
+    },
+    saveButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFF',
+    },
 });
