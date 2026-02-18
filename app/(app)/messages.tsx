@@ -62,10 +62,35 @@ export default function MessagesScreen() {
     const [viewingImage, setViewingImage] = useState<{ id: string; url: string; caption?: string } | null>(null);
     const [isLoadingImage, setIsLoadingImage] = useState(false);
     const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const { backgroundImage, backgroundOpacity, messageColorTheme, setBackgroundImage, setBackgroundOpacity, loadBackground, clearBackground } = useChatBackgroundStore();
 
     // Obtener colores del tema seleccionado
     const themeColors = getMessageThemeColors(messageColorTheme);
+
+    // Lista de emojis comunes
+    const commonEmojis = [
+        '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂',
+        '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩',
+        '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜',
+        '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐',
+        '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬',
+        '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒',
+        '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '😶‍🌫️', '🥴',
+        '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐',
+        '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳',
+        '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭',
+        '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱',
+        '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️',
+        '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖',
+        '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍',
+        '🤎', '💔', '❤️‍🔥', '❤️‍🩹', '💕', '💞', '💓', '💗',
+        '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️',
+        '👍', '👎', '👊', '✊', '🤛', '🤜', '🤞', '✌️',
+        '🤟', '🤘', '👌', '🤌', '🤏', '👈', '👉', '👆',
+        '👇', '☝️', '✋', '🤚', '🖐️', '🖖', '👋', '🤙',
+        '💪', '🦾', '🖕', '✍️', '🙏', '🦶', '🦵', '🦿',
+    ];
 
     // Función para reproducir sonido de envío
     const playSendSound = async () => {
@@ -782,10 +807,40 @@ export default function MessagesScreen() {
                             multiline
                             maxLength={200}
                         />
-                        <Pressable style={styles.emojiButton}>
+                        <Pressable
+                            style={styles.emojiButton}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setShowEmojiPicker(!showEmojiPicker);
+                            }}
+                        >
                             <Ionicons name="happy-outline" size={24} color="#9CA3AF" />
                         </Pressable>
                     </View>
+
+                    {/* Selector de emojis */}
+                    {showEmojiPicker && (
+                        <View style={styles.emojiPickerContainer}>
+                            <ScrollView
+                                horizontal={false}
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={styles.emojiGrid}
+                            >
+                                {commonEmojis.map((emoji, index) => (
+                                    <Pressable
+                                        key={index}
+                                        style={styles.emojiItem}
+                                        onPress={() => {
+                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            setNewMessage(newMessage + emoji);
+                                        }}
+                                    >
+                                        <Text style={styles.emojiText}>{emoji}</Text>
+                                    </Pressable>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
 
                     {/* Mostrar botón de voz cuando no hay texto, botón de enviar cuando hay texto */}
                     {!newMessage.trim() && partner ? (
@@ -1143,6 +1198,41 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: 8,
+    },
+    emojiPickerContainer: {
+        position: 'absolute',
+        bottom: 70,
+        left: 0,
+        right: 0,
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        height: 280,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 8,
+        paddingTop: 12,
+        paddingBottom: 12,
+    },
+    emojiGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        paddingHorizontal: 4,
+        paddingBottom: 16,
+        alignItems: 'flex-start',
+    },
+    emojiItem: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        margin: 4,
+    },
+    emojiText: {
+        fontSize: 30,
+        lineHeight: 36,
     },
     sendButton: {
         width: 40,

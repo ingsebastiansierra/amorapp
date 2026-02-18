@@ -78,7 +78,8 @@
           "androidCollapsedTitle": "Nuevo mensaje de tu pareja ❤️"
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

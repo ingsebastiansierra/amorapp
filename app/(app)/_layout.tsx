@@ -6,10 +6,9 @@ import { useAuthStore } from '@/core/store/useAuthStore';
 import { useEmotionalStore } from '@/core/store/useEmotionalStore';
 import { useThemeStore } from '@/core/store/useThemeStore';
 import { supabase } from '@/core/config/supabase';
-import { EMOTIONAL_STATES } from '@/core/types/emotions';
 import * as Haptics from 'expo-haptics';
 
-function MessagesTabIcon({ color, isSynced }: { color: string; isSynced: boolean }) {
+function MessagesTabIcon({ color, isSynced, focused }: { color: string; isSynced: boolean; focused: boolean }) {
     const { user } = useAuthStore();
     const [unreadCount, setUnreadCount] = useState(0);
 
@@ -58,8 +57,8 @@ function MessagesTabIcon({ color, isSynced }: { color: string; isSynced: boolean
     return (
         <View style={styles.iconContainer}>
             <Ionicons
-                name="chatbubbles"
-                size={26}
+                name={focused ? "chatbubbles" : "chatbubbles-outline"}
+                size={28}
                 color={isSynced ? color : '#D1D5DB'}
             />
             {!isSynced && (
@@ -73,45 +72,6 @@ function MessagesTabIcon({ color, isSynced }: { color: string; isSynced: boolean
                 </View>
             )}
         </View>
-    );
-}
-
-function EmotionalTabIcon() {
-    const { user } = useAuthStore();
-    const { myState } = useEmotionalStore();
-    const [currentEmoji, setCurrentEmoji] = useState('❤️');
-
-    useEffect(() => {
-        if (!user) return;
-
-        const loadMyEmotion = async () => {
-            try {
-                const { data } = await supabase
-                    .from('emotional_states')
-                    .select('state')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                if (data?.state) {
-                    const emoji = EMOTIONAL_STATES[data.state]?.emoji || '❤️';
-                    setCurrentEmoji(emoji);
-                }
-            } catch (error) {
-                console.error('Error loading emotion:', error);
-            }
-        };
-
-        loadMyEmotion();
-
-        // Actualizar cada 5 segundos
-        const interval = setInterval(loadMyEmotion, 5000);
-        return () => clearInterval(interval);
-    }, [user, myState]);
-
-    return (
-        <Text style={styles.emojiIcon}>{currentEmoji}</Text>
     );
 }
 
@@ -139,17 +99,25 @@ export default function AppLayout() {
                 headerShown: false,
                 tabBarStyle: {
                     backgroundColor: '#FFF',
-                    borderTopWidth: 1,
-                    borderTopColor: '#F4F0F2',
-                    paddingBottom: 20,
-                    paddingTop: 8,
-                    height: 80,
+                    borderTopWidth: 0,
+                    paddingBottom: 24,
+                    paddingTop: 12,
+                    height: 85,
+                    elevation: 8,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: -2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
                 },
-                tabBarActiveTintColor: theme.colors.primary,
-                tabBarInactiveTintColor: '#6B7280',
+                tabBarActiveTintColor: '#FF6B9D',
+                tabBarInactiveTintColor: '#9CA3AF',
                 tabBarLabelStyle: {
                     fontSize: 10,
-                    fontWeight: '500',
+                    fontWeight: '600',
+                    marginTop: 6,
+                    letterSpacing: 0.3,
+                },
+                tabBarIconStyle: {
                     marginTop: 4,
                 },
             }}
@@ -157,17 +125,23 @@ export default function AppLayout() {
             <Tabs.Screen
                 name="home"
                 options={{
-                    title: 'Inicio',
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="home" size={26} color={color} />
+                    title: 'INICIO',
+                    tabBarIcon: ({ color, focused }) => (
+                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
+                            <Ionicons name={focused ? "home" : "home-outline"} size={28} color={focused ? '#FFF' : color} />
+                        </View>
                     ),
                 }}
             />
             <Tabs.Screen
                 name="messages"
                 options={{
-                    title: 'Mensajes',
-                    tabBarIcon: ({ color }) => <MessagesTabIcon color={color} isSynced={isSynced} />,
+                    title: 'MENSAJES',
+                    tabBarIcon: ({ color, focused }) => (
+                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
+                            <MessagesTabIcon color={focused ? '#FFF' : color} isSynced={isSynced} focused={focused} />
+                        </View>
+                    ),
                     tabBarStyle: { display: 'none' },
                 }}
                 listeners={{
@@ -185,39 +159,24 @@ export default function AppLayout() {
                 }}
             />
             <Tabs.Screen
-                name="heart"
-                options={{
-                    title: '',
-                    tabBarIcon: () => <EmotionalTabIcon />,
-                    tabBarIconStyle: {
-                        width: 48,
-                        height: 48,
-                        borderRadius: 24,
-                        backgroundColor: theme.colors.primary,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        marginTop: -24,
-                        borderWidth: 4,
-                        borderColor: '#FFF',
-                    },
-                    tabBarLabel: () => null,
-                }}
-            />
-            <Tabs.Screen
                 name="private-images"
                 options={{
-                    title: 'Galería',
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="images" size={26} color={color} />
+                    title: 'GALERÍA',
+                    tabBarIcon: ({ color, focused }) => (
+                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
+                            <Ionicons name={focused ? "images" : "images-outline"} size={28} color={focused ? '#FFF' : color} />
+                        </View>
                     ),
                 }}
             />
             <Tabs.Screen
                 name="profile"
                 options={{
-                    title: 'Perfil',
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="person-circle" size={26} color={color} />
+                    title: 'PERFIL',
+                    tabBarIcon: ({ color, focused }) => (
+                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
+                            <Ionicons name={focused ? "person-circle" : "person-circle-outline"} size={28} color={focused ? '#FFF' : color} />
+                        </View>
                     ),
                 }}
             />
@@ -275,10 +234,20 @@ export default function AppLayout() {
 }
 
 const styles = StyleSheet.create({
+    iconWrapper: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    iconWrapperActive: {
+        backgroundColor: '#FF6B9D',
+    },
     iconContainer: {
         position: 'relative',
-        width: 26,
-        height: 26,
+        width: 28,
+        height: 28,
     },
     badge: {
         position: 'absolute',
@@ -311,8 +280,5 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 10,
         fontWeight: 'bold',
-    },
-    emojiIcon: {
-        fontSize: 24,
     },
 });

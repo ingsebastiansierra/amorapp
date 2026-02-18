@@ -724,7 +724,7 @@ export default function HomeScreen() {
                             </View>
                         )}
                     </Pressable>
-                    <Text style={styles.headerTitle}>US</Text>
+                    <Text style={styles.headerTitle}>Palpitos</Text>
                     <Pressable onPress={openMessageNotification} style={{ position: 'relative' }}>
                         <Ionicons name="notifications" size={26} color="#181113" />
                         {unreadCount > 0 && (
