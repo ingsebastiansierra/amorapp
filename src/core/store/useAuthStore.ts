@@ -8,7 +8,10 @@ interface AuthState {
   loading: boolean;
   demoMode: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string, gender: 'male' | 'female') => Promise<void>;
+  signUp: (email: string, password: string, name: string, gender: 'male' | 'female', birthDate?: Date | null, avatarUri?: string | null) => Promise<void>;
+  signUpWithOtp: (email: string, password: string, name: string, gender: 'male' | 'female', birthDate?: Date | null, avatarUri?: string | null) => Promise<void>;
+  verifyEmailOtp: (email: string, token: string) => Promise<{ error: any }>;
+  completeSignUp: (email: string, password: string, name: string, gender: 'male' | 'female', birthDate?: Date | null, avatarUri?: string | null) => Promise<void>;
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
   enterDemoMode: () => void;
@@ -68,7 +71,112 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (error) throw error;
   },
 
-  signUp: async (email: string, password: string, name: string, gender: 'male' | 'female') => {
+  signUpWithOtp: async (email: string, password: string, name: string, gender: 'male' | 'female', birthDate?: Date | null, avatarUri?: string | null) => {
+    if (isDemoMode) {
+      throw new Error('Configura Supabase primero. Ver SETUP.md');
+    }
+    
+    // Registrar usuario - Supabase enviará email con código OTP
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { 
+        emailRedirectTo: undefined, // Esto fuerza a Supabase a enviar email de confirmación
+        data: { 
+          name, 
+          gender,
+          birth_date: birthDate ? birthDate.toISOString().split('T')[0] : null,
+          avatar_uri: avatarUri || null
+        }
+      },
+    });
+    
+    if (error) throw error;
+    
+    // NO crear perfil aún, esperar verificación del código
+    console.log('✅ Usuario registrado, esperando verificación OTP');
+    console.log('📧 Email de confirmación enviado a:', email);
+    
+    return data;
+  },
+
+  verifyEmailOtp: async (email: string, token: string) => {
+    if (isDemoMode) {
+      return { error: { message: 'Configura Supabase primero. Ver SETUP.md' } };
+    }
+
+    // Verificar el código OTP para confirmar el email
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email', // Usar 'email' para verificación de signup
+    });
+
+    return { data, error };
+  },
+
+  completeSignUp: async (email: string, password: string, name: string, gender: 'male' | 'female', birthDate?: Date | null, avatarUri?: string | null) => {
+    if (isDemoMode) {
+      throw new Error('Configura Supabase primero. Ver SETUP.md');
+    }
+    
+    // Obtener el usuario actual (ya verificado con OTP)
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      throw new Error('Usuario no encontrado. Por favor verifica tu email primero.');
+    }
+    
+    // Crear perfil de usuario
+    let avatarUrl: string | null = null;
+
+    // Subir avatar si se proporcionó
+    if (avatarUri) {
+      try {
+        const fileExt = avatarUri.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        
+        // Convertir URI a blob
+        const response = await fetch(avatarUri);
+        const blob = await response.blob();
+        
+        // Subir a Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, blob, {
+            contentType: `image/${fileExt}`,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('Error uploading avatar:', uploadError);
+        } else {
+          avatarUrl = fileName;
+        }
+      } catch (uploadError) {
+        console.error('Error processing avatar:', uploadError);
+      }
+    }
+
+    // Crear perfil en la tabla users
+    const { error: profileError } = await supabase.from('users').insert({
+      id: user.id,
+      email: user.email!,
+      name,
+      gender,
+      birth_date: birthDate ? birthDate.toISOString().split('T')[0] : null,
+      avatar_url: avatarUrl,
+    });
+    
+    if (profileError) {
+      console.error('Error creating profile:', profileError);
+      throw profileError;
+    }
+
+    console.log('✅ Perfil de usuario creado exitosamente');
+  },
+
+  signUp: async (email: string, password: string, name: string, gender: 'male' | 'female', birthDate?: Date | null, avatarUri?: string | null) => {
     if (isDemoMode) {
       throw new Error('Configura Supabase primero. Ver SETUP.md');
     }
@@ -85,11 +193,43 @@ export const useAuthStore = create<AuthState>((set) => ({
     
     // Crear perfil de usuario automáticamente
     if (data.user) {
+      let avatarUrl: string | null = null;
+
+      // Subir avatar si se proporcionó
+      if (avatarUri) {
+        try {
+          const fileExt = avatarUri.split('.').pop();
+          const fileName = `${data.user.id}-${Date.now()}.${fileExt}`;
+          
+          // Convertir URI a blob
+          const response = await fetch(avatarUri);
+          const blob = await response.blob();
+          
+          // Subir a Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(fileName, blob, {
+              contentType: `image/${fileExt}`,
+              upsert: false,
+            });
+
+          if (uploadError) {
+            console.error('Error uploading avatar:', uploadError);
+          } else {
+            avatarUrl = fileName;
+          }
+        } catch (uploadError) {
+          console.error('Error processing avatar:', uploadError);
+        }
+      }
+
       const { error: profileError } = await supabase.from('users').insert({
         id: data.user.id,
         email: data.user.email!,
         name,
         gender,
+        birth_date: birthDate ? birthDate.toISOString().split('T')[0] : null,
+        avatar_url: avatarUrl,
       });
       
       if (profileError) {

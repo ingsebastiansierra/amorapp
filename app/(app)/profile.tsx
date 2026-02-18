@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/core/store/useAuthStore';
 import { supabase } from '@/core/config/supabase';
 import { AvatarPicker } from '@/shared/components/AvatarPicker';
+import { useTheme } from '@/shared/hooks/useTheme';
 
 interface UserProfile {
     name: string;
@@ -18,6 +19,7 @@ interface UserProfile {
 export default function ProfileScreen() {
     const { user, signOut } = useAuthStore();
     const router = useRouter();
+    const { colors } = useTheme();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -124,9 +126,9 @@ export default function ProfileScreen() {
                     </View>
 
                     {/* Personal Info Cards */}
-                    <View style={styles.infoCard}>
-                        <View style={styles.infoIconBox}>
-                            <Ionicons name="mail" size={20} color="#EB477E" />
+                    <View style={[styles.infoCard, { borderLeftColor: colors.primary, borderLeftWidth: 3 }]}>
+                        <View style={[styles.infoIconBox, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name="mail" size={20} color={colors.primary} />
                         </View>
                         <View style={styles.infoContent}>
                             <Text style={styles.infoLabel}>Email</Text>
@@ -134,9 +136,9 @@ export default function ProfileScreen() {
                         </View>
                     </View>
 
-                    <View style={styles.infoCard}>
-                        <View style={styles.infoIconBox}>
-                            <Ionicons name={profile?.gender === 'female' ? 'woman' : 'man'} size={20} color="#EB477E" />
+                    <View style={[styles.infoCard, { borderLeftColor: colors.primary, borderLeftWidth: 3 }]}>
+                        <View style={[styles.infoIconBox, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name={profile?.gender === 'female' ? 'woman' : 'man'} size={20} color={colors.primary} />
                         </View>
                         <View style={styles.infoContent}>
                             <Text style={styles.infoLabel}>Género</Text>
@@ -146,9 +148,9 @@ export default function ProfileScreen() {
                         </View>
                     </View>
 
-                    <View style={styles.infoCard}>
-                        <View style={styles.infoIconBox}>
-                            <Ionicons name="calendar" size={20} color="#EB477E" />
+                    <View style={[styles.infoCard, { borderLeftColor: colors.primary, borderLeftWidth: 3 }]}>
+                        <View style={[styles.infoIconBox, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name="calendar" size={20} color={colors.primary} />
                         </View>
                         <View style={styles.infoContent}>
                             <Text style={styles.infoLabel}>Fecha de Nacimiento</Text>
@@ -158,9 +160,9 @@ export default function ProfileScreen() {
                         </View>
                     </View>
 
-                    <View style={styles.infoCard}>
-                        <View style={styles.infoIconBox}>
-                            <Ionicons name="time" size={20} color="#EB477E" />
+                    <View style={[styles.infoCard, { borderLeftColor: colors.primary, borderLeftWidth: 3 }]}>
+                        <View style={[styles.infoIconBox, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name="time" size={20} color={colors.primary} />
                         </View>
                         <View style={styles.infoContent}>
                             <Text style={styles.infoLabel}>Edad</Text>
@@ -175,8 +177,8 @@ export default function ProfileScreen() {
 
                     {/* Settings Cards */}
                     <Pressable style={styles.settingCard}>
-                        <View style={styles.settingIcon}>
-                            <Ionicons name="notifications" size={24} color="#EB477E" />
+                        <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name="notifications" size={24} color={colors.primary} />
                         </View>
                         <View style={styles.settingContent}>
                             <Text style={styles.settingTitle}>Notificaciones</Text>
@@ -186,8 +188,8 @@ export default function ProfileScreen() {
                     </Pressable>
 
                     <Pressable style={styles.settingCard}>
-                        <View style={styles.settingIcon}>
-                            <Ionicons name="lock-closed" size={24} color="#EB477E" />
+                        <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name="lock-closed" size={24} color={colors.primary} />
                         </View>
                         <View style={styles.settingContent}>
                             <Text style={styles.settingTitle}>Privacidad y Seguridad</Text>
@@ -196,9 +198,12 @@ export default function ProfileScreen() {
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </Pressable>
 
-                    <Pressable style={styles.settingCard}>
-                        <View style={styles.settingIcon}>
-                            <Ionicons name="color-palette" size={24} color="#EB477E" />
+                    <Pressable
+                        style={styles.settingCard}
+                        onPress={() => router.push('/(app)/theme-settings')}
+                    >
+                        <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name="color-palette" size={24} color={colors.primary} />
                         </View>
                         <View style={styles.settingContent}>
                             <Text style={styles.settingTitle}>Personalización</Text>
@@ -211,8 +216,8 @@ export default function ProfileScreen() {
                         style={styles.settingCard}
                         onPress={() => router.push('/(app)/edit-profile')}
                     >
-                        <View style={styles.settingIcon}>
-                            <Ionicons name="person" size={24} color="#EB477E" />
+                        <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name="person" size={24} color={colors.primary} />
                         </View>
                         <View style={styles.settingContent}>
                             <Text style={styles.settingTitle}>Editar Perfil</Text>
@@ -225,8 +230,8 @@ export default function ProfileScreen() {
                         style={styles.settingCard}
                         onPress={() => router.push('/(app)/link-partner')}
                     >
-                        <View style={styles.settingIcon}>
-                            <Ionicons name="heart" size={24} color="#EB477E" />
+                        <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name="heart" size={24} color={colors.primary} />
                         </View>
                         <View style={styles.settingContent}>
                             <Text style={styles.settingTitle}>Vincular Pareja</Text>
@@ -328,7 +333,6 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#FCE7F3',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
@@ -376,7 +380,6 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#FCE7F3',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,

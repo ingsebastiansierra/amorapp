@@ -18,6 +18,7 @@ import { avatarService } from '@/core/services/avatarService';
 import { useRelationshipTracking } from '@/shared/hooks/useRelationshipTracking';
 import { useNotifications } from '@/shared/hooks/useNotifications';
 import { notificationService } from '@/core/services/notificationService';
+import { useTheme } from '@/shared/hooks/useTheme';
 
 interface PartnerInfo {
     id: string;
@@ -32,6 +33,7 @@ export default function HomeScreen() {
     const { myState, partnerState, setMyState, startPolling, stopPolling } = useEmotionalStore();
     const { signOut, user } = useAuthStore();
     const router = useRouter();
+    const { colors } = useTheme();
     const [showStateSelector, setShowStateSelector] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const [partner, setPartner] = useState<PartnerInfo | null>(null);
@@ -726,7 +728,7 @@ export default function HomeScreen() {
                     <Pressable onPress={openMessageNotification} style={{ position: 'relative' }}>
                         <Ionicons name="notifications" size={26} color="#181113" />
                         {unreadCount > 0 && (
-                            <View style={styles.badge}>
+                            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
                                 <Text style={styles.badgeText}>{unreadCount}</Text>
                             </View>
                         )}
@@ -738,13 +740,17 @@ export default function HomeScreen() {
                     <View style={styles.relationshipStats}>
                         <View style={styles.statItem}>
                             <Text style={styles.statIcon}>❤️</Text>
-                            <Text style={styles.statValue}>{syncStats.days_together}</Text>
+                            <Text style={[styles.statValue, { color: colors.primary }]}>
+                                {syncStats.days_together}
+                            </Text>
                             <Text style={styles.statLabel}>días juntos</Text>
                         </View>
                         {syncStats.current_streak > 0 && (
                             <View style={styles.statItem}>
                                 <Text style={styles.statIcon}>🔥</Text>
-                                <Text style={styles.statValue}>{syncStats.current_streak}</Text>
+                                <Text style={[styles.statValue, { color: colors.primary }]}>
+                                    {syncStats.current_streak}
+                                </Text>
                                 <Text style={styles.statLabel}>días sincronizados</Text>
                             </View>
                         )}
@@ -828,7 +834,7 @@ export default function HomeScreen() {
                     {isSynced && partner && (
                         <View style={styles.syncButtonContainer}>
                             <Pressable
-                                style={styles.syncButton}
+                                style={[styles.syncButton, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
                                 onPress={() => {
                                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                     router.push('/(app)/messages');
@@ -845,7 +851,7 @@ export default function HomeScreen() {
                     {/* Mensaje de sincronización */}
                     {isSynced && partner && (
                         <View style={styles.syncMessage}>
-                            <Text style={styles.syncMessageText}>
+                            <Text style={[styles.syncMessageText, { color: colors.primary }]}>
                                 ✨ ¡Ambos se sienten igual! Ahora pueden hablar
                             </Text>
                         </View>
@@ -866,7 +872,7 @@ export default function HomeScreen() {
 
                     {/* Botón Change My Mood */}
                     <Pressable
-                        style={styles.changeMoodBtn}
+                        style={[styles.changeMoodBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
                         onPress={() => setShowStateSelector(true)}
                     >
                         <Ionicons name="happy-outline" size={24} color="#FFF" />
@@ -876,8 +882,8 @@ export default function HomeScreen() {
                     {/* Upcoming Date Card */}
                     <Pressable style={styles.upcomingCard}>
                         <View style={styles.upcomingLeft}>
-                            <View style={styles.upcomingIconBox}>
-                                <Ionicons name="calendar-outline" size={22} color="#EB477E" />
+                            <View style={[styles.upcomingIconBox, { backgroundColor: colors.primary + '20' }]}>
+                                <Ionicons name="calendar-outline" size={22} color={colors.primary} />
                             </View>
                             <View>
                                 <Text style={styles.upcomingTitle}>Próxima Cita</Text>
@@ -896,7 +902,7 @@ export default function HomeScreen() {
                     onRequestClose={() => setShowStateSelector(false)}
                 >
                     <View style={styles.stateSelectorOverlay}>
-                        <View style={[styles.stateSelectorContainer, { backgroundColor: '#EB477E' }]}>
+                        <View style={[styles.stateSelectorContainer, { backgroundColor: colors.primary }]}>
                             <SafeAreaView style={styles.stateSelectorSafeArea}>
                                 {/* Botón de cerrar */}
                                 <Pressable
@@ -965,7 +971,7 @@ export default function HomeScreen() {
                                                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                                 }}
                                                 size={28}
-                                                color="#007AFF"
+                                                color={colors.primary}
                                             />
                                             <VoiceRecorderButton
                                                 toUserId={partner.id}
@@ -973,7 +979,7 @@ export default function HomeScreen() {
                                                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                                 }}
                                                 size={28}
-                                                color="#FF3B30"
+                                                color={colors.secondary}
                                             />
                                         </View>
                                     )}
@@ -982,6 +988,7 @@ export default function HomeScreen() {
                                 <Pressable
                                     style={[
                                         styles.syncSendButton,
+                                        { backgroundColor: colors.gradientStart },
                                         !syncMessage.trim() && styles.syncSendButtonDisabled
                                     ]}
                                     onPress={handleSendSyncMessage}
@@ -1114,7 +1121,7 @@ export default function HomeScreen() {
 
                             <View style={styles.messageModalActions}>
                                 <Pressable
-                                    style={styles.messageModalButton}
+                                    style={[styles.messageModalButton, { backgroundColor: colors.gradientStart }]}
                                     onPress={markAllAsRead}
                                 >
                                     <Text style={styles.messageModalButtonText}>
@@ -1184,7 +1191,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: -4,
         right: -4,
-        backgroundColor: '#EB477E',
         borderRadius: 10,
         minWidth: 18,
         height: 18,
@@ -1218,7 +1224,6 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#EB477E',
     },
     statLabel: {
         fontSize: 10,
@@ -1293,11 +1298,9 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     syncButton: {
-        backgroundColor: '#EB477E',
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 20,
-        shadowColor: '#EB477E',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -1328,7 +1331,6 @@ const styles = StyleSheet.create({
     },
     syncMessageText: {
         fontSize: 14,
-        color: '#EB477E',
         fontWeight: '600',
         textAlign: 'center',
     },
@@ -1364,14 +1366,12 @@ const styles = StyleSheet.create({
     },
     // Change Mood Button
     changeMoodBtn: {
-        backgroundColor: '#EB477E',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 16,
         borderRadius: 24,
         marginBottom: 16,
-        shadowColor: '#EB477E',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -1405,7 +1405,6 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#FFF',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1935,7 +1934,6 @@ const styles = StyleSheet.create({
         paddingTop: 16,
     },
     messageModalButton: {
-        backgroundColor: '#667eea',
         borderRadius: 16,
         padding: 16,
         alignItems: 'center',
@@ -2025,7 +2023,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     syncSendButton: {
-        backgroundColor: '#667eea',
         borderRadius: 12,
         padding: 14,
         alignItems: 'center',

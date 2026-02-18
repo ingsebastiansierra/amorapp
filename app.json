@@ -77,7 +77,8 @@
           "androidMode": "default",
           "androidCollapsedTitle": "Nuevo mensaje de tu pareja ❤️"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

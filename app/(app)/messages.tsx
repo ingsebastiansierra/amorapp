@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Image, TextInput, KeyboardAvoidingView, Platform, Modal, Dimensions, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Image, TextInput, KeyboardAvoidingView, Platform, Modal, Dimensions, ActivityIndicator, Alert, ImageBackground } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ScreenCapture from 'expo-screen-capture';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/core/store/useAuthStore';
 import { supabase } from '@/core/config/supabase';
@@ -15,6 +17,7 @@ import { VoiceRecorderButton } from '@/shared/components/VoiceRecorderButton';
 import { VoiceMessagePlayer } from '@/shared/components/VoiceMessagePlayer';
 import { mediaService } from '@/core/services/mediaService';
 import { notificationService } from '@/core/services/notificationService';
+import { useChatBackgroundStore } from '@/core/store/useChatBackgroundStore';
 
 const { width, height } = Dimensions.get('window');
 
@@ -56,12 +59,15 @@ export default function MessagesScreen() {
     const [showSearch, setShowSearch] = useState(false);
     const [viewingImage, setViewingImage] = useState<{ id: string; url: string; caption?: string } | null>(null);
     const [isLoadingImage, setIsLoadingImage] = useState(false);
+    const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
+    const { backgroundImage, backgroundOpacity, setBackgroundImage, setBackgroundOpacity, loadBackground, clearBackground } = useChatBackgroundStore();
 
     useEffect(() => {
         loadMyProfile();
         loadPartnerInfo();
         loadMyCurrentEmotion();
         updateLastSeen(); // Registrar que el usuario entró al chat
+        loadBackground(); // Cargar fondo del chat
 
         // Polling para actualizar la emoción cada 3 segundos
         const emotionInterval = setInterval(loadMyCurrentEmotion, 3000);
@@ -380,9 +386,12 @@ export default function MessagesScreen() {
     };
 
     const handleSendMessage = async () => {
-        if (!newMessage.trim() || !partner || !user || !myCurrentEmotion) {
+        if (!newMessage.trim() || !partner || !user) {
             return;
         }
+
+        // Si no hay emoción actual, usar 'normal' como predeterminada
+        const emotionToUse: EmotionalState = myCurrentEmotion || EmotionalState.NORMAL;
 
         try {
             const { data: userData } = await supabase
@@ -402,7 +411,7 @@ export default function MessagesScreen() {
                     from_user_id: user.id,
                     to_user_id: partner.id,
                     message: newMessage.trim(),
-                    synced_emotion: myCurrentEmotion,
+                    synced_emotion: emotionToUse,
                 });
 
             if (error) {
@@ -415,7 +424,7 @@ export default function MessagesScreen() {
                     partner.push_token,
                     userData.name,
                     newMessage.trim(),
-                    myCurrentEmotion
+                    emotionToUse
                 );
             }
 
@@ -494,6 +503,33 @@ export default function MessagesScreen() {
         } catch (error) {
             setViewingImage(null);
         }
+    };
+
+    const handleSelectBackground = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (status !== 'granted') {
+            Alert.alert('Permiso denegado', 'Necesitamos acceso a tu galería');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 0.7,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            await setBackgroundImage(result.assets[0].uri);
+            setShowBackgroundMenu(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+    };
+
+    const handleClearBackground = async () => {
+        await clearBackground();
+        setShowBackgroundMenu(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     };
 
     const renderMessage = (msg: Message) => {
@@ -624,13 +660,22 @@ export default function MessagesScreen() {
                                 </View>
                             </View>
 
-                            <Pressable
-                                onPress={() => setShowSearch(true)}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                style={styles.searchButton}
-                            >
-                                <Ionicons name="search" size={24} color="#181113" />
-                            </Pressable>
+                            <View style={styles.headerActions}>
+                                <Pressable
+                                    onPress={() => setShowBackgroundMenu(true)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    style={styles.headerButton}
+                                >
+                                    <Ionicons name="image-outline" size={24} color="#181113" />
+                                </Pressable>
+                                <Pressable
+                                    onPress={() => setShowSearch(true)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    style={styles.searchButton}
+                                >
+                                    <Ionicons name="search" size={24} color="#181113" />
+                                </Pressable>
+                            </View>
                         </>
                     ) : (
                         <>
@@ -657,29 +702,35 @@ export default function MessagesScreen() {
                 </View>
 
                 {/* Messages */}
-                <ScrollView
-                    ref={scrollViewRef}
+                <ImageBackground
+                    source={backgroundImage ? { uri: backgroundImage } : undefined}
                     style={[styles.messagesContainer, { backgroundColor }]}
-                    contentContainerStyle={styles.messagesContent}
-                    showsVerticalScrollIndicator={false}
+                    imageStyle={{ opacity: backgroundOpacity }}
                 >
-                    {Object.keys(groupedMessages).length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <Text style={styles.emptyEmoji}>💌</Text>
-                            <Text style={styles.emptyText}>No hay mensajes aún</Text>
-                            <Text style={styles.emptySubtext}>Inicia una conversación con tu pareja</Text>
-                        </View>
-                    ) : (
-                        Object.entries(groupedMessages).map(([date, msgs]) => (
-                            <View key={date}>
-                                <View style={styles.dateLabel}>
-                                    <Text style={styles.dateLabelText}>{date}</Text>
-                                </View>
-                                {msgs.map(renderMessage)}
+                    <ScrollView
+                        ref={scrollViewRef}
+                        style={styles.messagesScrollView}
+                        contentContainerStyle={styles.messagesContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {Object.keys(groupedMessages).length === 0 ? (
+                            <View style={styles.emptyState}>
+                                <Text style={styles.emptyEmoji}>💌</Text>
+                                <Text style={styles.emptyText}>No hay mensajes aún</Text>
+                                <Text style={styles.emptySubtext}>Inicia una conversación con tu pareja</Text>
                             </View>
-                        ))
-                    )}
-                </ScrollView>
+                        ) : (
+                            Object.entries(groupedMessages).map(([date, msgs]) => (
+                                <View key={date}>
+                                    <View style={styles.dateLabel}>
+                                        <Text style={styles.dateLabelText}>{date}</Text>
+                                    </View>
+                                    {msgs.map(renderMessage)}
+                                </View>
+                            ))
+                        )}
+                    </ScrollView>
+                </ImageBackground>
 
                 {/* Input de mensaje */}
                 <View style={styles.inputContainer}>
@@ -775,6 +826,64 @@ export default function MessagesScreen() {
                         )}
                     </View>
                 </Modal>
+
+                {/* Modal para configurar fondo del chat */}
+                <Modal
+                    visible={showBackgroundMenu}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setShowBackgroundMenu(false)}
+                >
+                    <View style={styles.backgroundMenuOverlay}>
+                        <View style={styles.backgroundMenu}>
+                            <Text style={styles.backgroundMenuTitle}>Fondo del Chat</Text>
+
+                            <Pressable
+                                style={styles.backgroundMenuItem}
+                                onPress={handleSelectBackground}
+                            >
+                                <Ionicons name="image" size={24} color="#667eea" />
+                                <Text style={styles.backgroundMenuItemText}>Seleccionar imagen</Text>
+                            </Pressable>
+
+                            {backgroundImage && (
+                                <>
+                                    <View style={styles.opacityControl}>
+                                        <Text style={styles.opacityLabel}>
+                                            Opacidad: {Math.round(backgroundOpacity * 100)}%
+                                        </Text>
+                                        <Slider
+                                            style={styles.slider}
+                                            minimumValue={0.2}
+                                            maximumValue={0.8}
+                                            value={backgroundOpacity}
+                                            onValueChange={setBackgroundOpacity}
+                                            minimumTrackTintColor="#667eea"
+                                            maximumTrackTintColor="#E5E7EB"
+                                        />
+                                    </View>
+
+                                    <Pressable
+                                        style={[styles.backgroundMenuItem, styles.backgroundMenuItemDanger]}
+                                        onPress={handleClearBackground}
+                                    >
+                                        <Ionicons name="trash" size={24} color="#EF4444" />
+                                        <Text style={[styles.backgroundMenuItemText, styles.backgroundMenuItemTextDanger]}>
+                                            Quitar fondo
+                                        </Text>
+                                    </Pressable>
+                                </>
+                            )}
+
+                            <Pressable
+                                style={styles.backgroundMenuClose}
+                                onPress={() => setShowBackgroundMenu(false)}
+                            >
+                                <Text style={styles.backgroundMenuCloseText}>Cerrar</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </Modal>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -799,6 +908,14 @@ const styles = StyleSheet.create({
     backButton: {
         padding: 4,
         marginLeft: -4,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    headerButton: {
+        padding: 4,
     },
     searchButton: {
         padding: 4,
@@ -839,6 +956,9 @@ const styles = StyleSheet.create({
         marginHorizontal: 12,
     },
     messagesContainer: {
+        flex: 1,
+    },
+    messagesScrollView: {
         flex: 1,
     },
     messagesContent: {
@@ -1083,5 +1203,67 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 12,
         fontWeight: '500',
+    },
+    backgroundMenuOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    backgroundMenu: {
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+    },
+    backgroundMenuTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    backgroundMenuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        marginBottom: 12,
+        gap: 12,
+    },
+    backgroundMenuItemText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    backgroundMenuItemDanger: {
+        backgroundColor: '#FEF2F2',
+    },
+    backgroundMenuItemTextDanger: {
+        color: '#EF4444',
+    },
+    opacityControl: {
+        marginBottom: 16,
+        paddingHorizontal: 4,
+    },
+    opacityLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+        marginBottom: 8,
+    },
+    slider: {
+        width: '100%',
+        height: 40,
+    },
+    backgroundMenuClose: {
+        padding: 16,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    backgroundMenuCloseText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#6B7280',
     },
 });

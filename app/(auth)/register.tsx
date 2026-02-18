@@ -1,20 +1,61 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, ScrollView, Image, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@core/store/useAuthStore';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function RegisterScreen() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [gender, setGender] = useState<'male' | 'female' | null>(null);
+    const [birthDate, setBirthDate] = useState<Date | null>(null);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [avatarUri, setAvatarUri] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
+    const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (status !== 'granted') {
+            Alert.alert('Permiso denegado', 'Necesitamos acceso a tu galería para seleccionar una foto');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            setAvatarUri(result.assets[0].uri);
+        }
+    };
+
+    const calculateAge = (date: Date): number => {
+        const today = new Date();
+        let age = today.getFullYear() - date.getFullYear();
+        const monthDiff = today.getMonth() - date.getMonth();
+
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+            age--;
+        }
+
+        return age;
+    };
+
     const handleRegister = async () => {
-        if (!name || !email || !password || !gender) {
-            Alert.alert('Error', 'Por favor completa todos los campos');
+        if (!name || !email || !password || !confirmPassword || !gender || !birthDate) {
+            Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
             return;
         }
 
@@ -23,25 +64,55 @@ export default function RegisterScreen() {
             return;
         }
 
+        if (password !== confirmPassword) {
+            Alert.alert('Error', 'Las contraseñas no coinciden');
+            return;
+        }
+
+        // Validar edad mínima (18 años)
+        const age = calculateAge(birthDate);
+        if (age < 18) {
+            Alert.alert('Error', 'Debes tener al menos 18 años para registrarte');
+            return;
+        }
+
         setLoading(true);
         try {
-            const { signUp } = useAuthStore.getState();
-            await signUp(email, password, name, gender);
-            Alert.alert(
-                '¡Cuenta creada!',
-                'Revisa tu email para confirmar tu cuenta. Luego podrás iniciar sesión.',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => router.back(),
-                    },
-                ]
-            );
+            const { signUpWithOtp } = useAuthStore.getState();
+            await signUpWithOtp(email, password, name, gender, birthDate, avatarUri);
+
+            // Redirigir a pantalla de verificación con código
+            router.push({
+                pathname: '/(auth)/verify-email',
+                params: {
+                    email,
+                    name,
+                    gender,
+                    birthDate: birthDate.toISOString(),
+                    avatarUri: avatarUri || '',
+                    password
+                }
+            });
         } catch (error: any) {
             Alert.alert('Error', error.message);
         } finally {
             setLoading(false);
         }
+    };
+
+    const onDateChange = (event: any, selectedDate?: Date) => {
+        setShowDatePicker(Platform.OS === 'ios');
+        if (selectedDate) {
+            setBirthDate(selectedDate);
+        }
+    };
+
+    const formatDate = (date: Date): string => {
+        return date.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
     };
 
     return (
@@ -73,16 +144,92 @@ export default function RegisterScreen() {
                         keyboardType="email-address"
                     />
 
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Contraseña (mínimo 6 caracteres)"
-                        placeholderTextColor="#CBD5E0"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                    />
+                    {/* Contraseña */}
+                    <View style={styles.passwordContainer}>
+                        <TextInput
+                            style={styles.passwordInput}
+                            placeholder="Contraseña (mínimo 6 caracteres)"
+                            placeholderTextColor="#CBD5E0"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry={!showPassword}
+                        />
+                        <Pressable
+                            style={styles.eyeButton}
+                            onPress={() => setShowPassword(!showPassword)}
+                        >
+                            <Ionicons
+                                name={showPassword ? 'eye-off' : 'eye'}
+                                size={24}
+                                color="#FFF"
+                            />
+                        </Pressable>
+                    </View>
 
-                    <Text style={styles.genderLabel}>Soy:</Text>
+                    {/* Confirmar Contraseña */}
+                    <View style={styles.passwordContainer}>
+                        <TextInput
+                            style={styles.passwordInput}
+                            placeholder="Confirmar contraseña"
+                            placeholderTextColor="#CBD5E0"
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            secureTextEntry={!showConfirmPassword}
+                        />
+                        <Pressable
+                            style={styles.eyeButton}
+                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                            <Ionicons
+                                name={showConfirmPassword ? 'eye-off' : 'eye'}
+                                size={24}
+                                color="#FFF"
+                            />
+                        </Pressable>
+                    </View>
+
+                    {/* Fecha de Nacimiento */}
+                    <Text style={styles.fieldLabel}>Fecha de Nacimiento *</Text>
+                    <Pressable
+                        style={styles.dateButton}
+                        onPress={() => setShowDatePicker(true)}
+                    >
+                        <Text style={styles.dateButtonText}>
+                            {birthDate ? formatDate(birthDate) : 'Selecciona tu fecha de nacimiento'}
+                        </Text>
+                        <View style={styles.dateIconContainer}>
+                            <Ionicons name="calendar-outline" size={22} color="#FFF" />
+                        </View>
+                    </Pressable>
+
+                    {showDatePicker && (
+                        <DateTimePicker
+                            value={birthDate || new Date(2000, 0, 1)}
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            onChange={onDateChange}
+                            maximumDate={new Date()}
+                            minimumDate={new Date(1940, 0, 1)}
+                        />
+                    )}
+
+                    {/* Foto de Perfil (Opcional) */}
+                    <Text style={styles.fieldLabel}>Foto de Perfil (Opcional)</Text>
+                    <Pressable
+                        style={styles.avatarContainer}
+                        onPress={pickImage}
+                    >
+                        {avatarUri ? (
+                            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                        ) : (
+                            <View style={styles.avatarPlaceholder}>
+                                <Ionicons name="camera" size={40} color="#FFF" />
+                                <Text style={styles.avatarPlaceholderText}>Toca para agregar foto</Text>
+                            </View>
+                        )}
+                    </Pressable>
+
+                    <Text style={styles.genderLabel}>Soy: *</Text>
                     <View style={styles.genderContainer}>
                         <Pressable
                             style={[
@@ -178,12 +325,87 @@ const styles = StyleSheet.create({
         color: '#FFF',
         marginBottom: 16,
     },
+    passwordContainer: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 12,
+        marginBottom: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingRight: 12,
+    },
+    passwordInput: {
+        flex: 1,
+        padding: 16,
+        fontSize: 16,
+        color: '#FFF',
+    },
+    eyeButton: {
+        padding: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     genderLabel: {
         fontSize: 18,
         fontWeight: '600',
         color: '#FFF',
         marginBottom: 12,
         textAlign: 'center',
+    },
+    fieldLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFF',
+        marginBottom: 8,
+        marginTop: 8,
+    },
+    dateButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 12,
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        marginBottom: 16,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        minHeight: 56,
+    },
+    dateButtonText: {
+        fontSize: 16,
+        color: '#FFF',
+        flex: 1,
+        marginRight: 12,
+    },
+    dateIconContainer: {
+        width: 28,
+        height: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarContainer: {
+        alignSelf: 'center',
+        marginBottom: 16,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        overflow: 'hidden',
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+    },
+    avatarPlaceholder: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 10,
+    },
+    avatarPlaceholderText: {
+        fontSize: 12,
+        color: '#FFF',
+        textAlign: 'center',
+        marginTop: 8,
     },
     genderContainer: {
         flexDirection: 'row',

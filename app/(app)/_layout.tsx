@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/core/store/useAuthStore';
 import { useEmotionalStore } from '@/core/store/useEmotionalStore';
+import { useThemeStore } from '@/core/store/useThemeStore';
 import { supabase } from '@/core/config/supabase';
 import { EMOTIONAL_STATES } from '@/core/types/emotions';
 import * as Haptics from 'expo-haptics';
@@ -117,7 +118,14 @@ function EmotionalTabIcon() {
 export default function AppLayout() {
     const { user } = useAuthStore();
     const { myState, partnerState } = useEmotionalStore();
+    const loadTheme = useThemeStore(state => state.loadTheme);
+    const theme = useThemeStore(state => state.theme);
     const [isSynced, setIsSynced] = useState(false);
+
+    // Cargar tema al iniciar
+    useEffect(() => {
+        loadTheme();
+    }, []);
 
     useEffect(() => {
         // Verificar sincronización
@@ -137,7 +145,7 @@ export default function AppLayout() {
                     paddingTop: 8,
                     height: 80,
                 },
-                tabBarActiveTintColor: '#EB477E',
+                tabBarActiveTintColor: theme.colors.primary,
                 tabBarInactiveTintColor: '#6B7280',
                 tabBarLabelStyle: {
                     fontSize: 10,
@@ -185,7 +193,7 @@ export default function AppLayout() {
                         width: 48,
                         height: 48,
                         borderRadius: 24,
-                        backgroundColor: '#EB477E',
+                        backgroundColor: theme.colors.primary,
                         justifyContent: 'center',
                         alignItems: 'center',
                         marginTop: -24,
@@ -252,6 +260,12 @@ export default function AppLayout() {
             />
             <Tabs.Screen
                 name="home-old"
+                options={{
+                    href: null,
+                }}
+            />
+            <Tabs.Screen
+                name="theme-settings"
                 options={{
                     href: null,
                 }}
