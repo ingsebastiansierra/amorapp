@@ -22,8 +22,14 @@ export default function RegisterScreen() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
+    // Estados de validación
+    const [passwordsMatch, setPasswordsMatch] = useState<boolean | null>(null);
+    const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
+
     // Animación del borde
     const borderRotate = useRef(new Animated.Value(0)).current;
+    const matchShake = useRef(new Animated.Value(0)).current;
+    const matchScale = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         // Animación del borde del formulario (rotación continua)
@@ -35,6 +41,74 @@ export default function RegisterScreen() {
             })
         ).start();
     }, []);
+
+    // Validar coincidencia de contraseñas en tiempo real
+    useEffect(() => {
+        if (confirmPassword.length > 0) {
+            const match = password === confirmPassword;
+            setPasswordsMatch(match);
+
+            if (!match) {
+                // Animación de shake cuando no coinciden
+                Animated.sequence([
+                    Animated.timing(matchShake, {
+                        toValue: 10,
+                        duration: 50,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(matchShake, {
+                        toValue: -10,
+                        duration: 50,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(matchShake, {
+                        toValue: 10,
+                        duration: 50,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(matchShake, {
+                        toValue: 0,
+                        duration: 50,
+                        useNativeDriver: true,
+                    }),
+                ]).start();
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            } else {
+                // Animación de éxito cuando coinciden
+                Animated.sequence([
+                    Animated.timing(matchScale, {
+                        toValue: 1.05,
+                        duration: 100,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(matchScale, {
+                        toValue: 1,
+                        duration: 100,
+                        useNativeDriver: true,
+                    }),
+                ]).start();
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+        } else {
+            setPasswordsMatch(null);
+        }
+    }, [password, confirmPassword]);
+
+    // Validar fortaleza de contraseña
+    useEffect(() => {
+        if (password.length === 0) {
+            setPasswordStrength(null);
+            return;
+        }
+
+        if (password.length < 6) {
+            setPasswordStrength('weak');
+        } else if (password.length < 10) {
+            setPasswordStrength('medium');
+        } else {
+            setPasswordStrength('strong');
+        }
+    }, [password]);
 
     const borderRotateInterpolate = borderRotate.interpolate({
         inputRange: [0, 1],
@@ -154,9 +228,11 @@ export default function RegisterScreen() {
                     <Pressable style={styles.backButton} onPress={() => router.back()}>
                         <Ionicons name="arrow-back" size={24} color="#2D3748" />
                     </Pressable>
-                    <View style={styles.logoCircle}>
-                        <Ionicons name="people" size={50} color="#667eea" />
-                    </View>
+                    <Image
+                        source={require('../../assets/icon.png')}
+                        style={styles.logo}
+                        resizeMode="contain"
+                    />
                     <Text style={styles.title}>Crear Cuenta</Text>
                     <Text style={styles.subtitle}>Únete a Palpitos</Text>
                 </View>
@@ -253,12 +329,47 @@ export default function RegisterScreen() {
                                     />
                                 </Pressable>
                             </View>
+                            {/* Indicador de fortaleza */}
+                            {passwordStrength && (
+                                <View style={styles.strengthContainer}>
+                                    <View style={styles.strengthBars}>
+                                        <View style={[
+                                            styles.strengthBar,
+                                            passwordStrength === 'weak' && styles.strengthBarWeak,
+                                            (passwordStrength === 'medium' || passwordStrength === 'strong') && styles.strengthBarMedium,
+                                        ]} />
+                                        <View style={[
+                                            styles.strengthBar,
+                                            (passwordStrength === 'medium' || passwordStrength === 'strong') && styles.strengthBarMedium,
+                                        ]} />
+                                        <View style={[
+                                            styles.strengthBar,
+                                            passwordStrength === 'strong' && styles.strengthBarStrong,
+                                        ]} />
+                                    </View>
+                                    <Text style={[
+                                        styles.strengthText,
+                                        passwordStrength === 'weak' && styles.strengthTextWeak,
+                                        passwordStrength === 'medium' && styles.strengthTextMedium,
+                                        passwordStrength === 'strong' && styles.strengthTextStrong,
+                                    ]}>
+                                        {passwordStrength === 'weak' && 'Débil'}
+                                        {passwordStrength === 'medium' && 'Media'}
+                                        {passwordStrength === 'strong' && 'Fuerte'}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
 
                         {/* Confirm Password Input */}
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>Confirmar contraseña</Text>
-                            <View style={styles.inputContainer}>
+                            <Animated.View style={[
+                                styles.inputContainer,
+                                passwordsMatch === false && styles.inputContainerError,
+                                passwordsMatch === true && styles.inputContainerSuccess,
+                                { transform: [{ translateX: matchShake }, { scale: matchScale }] }
+                            ]}>
                                 <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
@@ -278,7 +389,21 @@ export default function RegisterScreen() {
                                         color="#999"
                                     />
                                 </Pressable>
-                            </View>
+                                {passwordsMatch !== null && (
+                                    <Ionicons
+                                        name={passwordsMatch ? "checkmark-circle" : "close-circle"}
+                                        size={20}
+                                        color={passwordsMatch ? "#10B981" : "#EF4444"}
+                                        style={styles.validationIcon}
+                                    />
+                                )}
+                            </Animated.View>
+                            {passwordsMatch === false && (
+                                <Text style={styles.errorText}>Las contraseñas no coinciden</Text>
+                            )}
+                            {passwordsMatch === true && (
+                                <Text style={styles.successText}>✓ Las contraseñas coinciden</Text>
+                            )}
                         </View>
 
                         {/* Birth Date */}
@@ -373,7 +498,7 @@ export default function RegisterScreen() {
                     </Pressable>
                 </View>
 
-                <View style={{ height: 40 }} />
+                <View style={{ height: 30 }} />
             </ScrollView>
         </LinearGradient>
     );
@@ -385,13 +510,13 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
-        paddingTop: 60,
-        paddingBottom: 40,
+        paddingTop: 40,
+        paddingBottom: 30,
         paddingHorizontal: 24,
     },
     header: {
         alignItems: 'center',
-        marginBottom: 32,
+        marginBottom: 20,
     },
     backButton: {
         position: 'absolute',
@@ -409,28 +534,25 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
-    logoCircle: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: '#FFF',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 16,
+    logo: {
+        width: 70,
+        height: 70,
+        marginBottom: 12,
+        borderRadius: 16,
         shadowColor: '#667eea',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 10,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 5,
     },
     title: {
-        fontSize: 32,
+        fontSize: 26,
         fontWeight: '700',
         color: '#FFF',
         marginBottom: 4,
     },
     subtitle: {
-        fontSize: 15,
+        fontSize: 13,
         color: '#FFF',
     },
     cardWrapper: {
@@ -463,18 +585,18 @@ const styles = StyleSheet.create({
     },
     avatarContainer: {
         alignSelf: 'center',
-        marginBottom: 8,
+        marginBottom: 6,
         position: 'relative',
     },
     avatarImage: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+        width: 90,
+        height: 90,
+        borderRadius: 45,
     },
     avatarPlaceholder: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+        width: 90,
+        height: 90,
+        borderRadius: 45,
         backgroundColor: '#e8ebff',
         justifyContent: 'center',
         alignItems: 'center',
@@ -486,9 +608,9 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         right: 0,
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         backgroundColor: '#667eea',
         justifyContent: 'center',
         alignItems: 'center',
@@ -496,13 +618,13 @@ const styles = StyleSheet.create({
         borderColor: '#FFF',
     },
     avatarLabel: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#718096',
         textAlign: 'center',
-        marginBottom: 20,
+        marginBottom: 16,
     },
     inputGroup: {
-        marginBottom: 16,
+        marginBottom: 14,
     },
     inputLabel: {
         fontSize: 14,
@@ -533,6 +655,69 @@ const styles = StyleSheet.create({
     },
     eyeIcon: {
         padding: 8,
+    },
+    validationIcon: {
+        marginLeft: 8,
+    },
+    inputContainerError: {
+        borderColor: '#EF4444',
+        borderWidth: 2,
+    },
+    inputContainerSuccess: {
+        borderColor: '#10B981',
+        borderWidth: 2,
+    },
+    errorText: {
+        fontSize: 12,
+        color: '#EF4444',
+        marginTop: 4,
+        marginLeft: 4,
+    },
+    successText: {
+        fontSize: 12,
+        color: '#10B981',
+        marginTop: 4,
+        marginLeft: 4,
+        fontWeight: '600',
+    },
+    strengthContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        gap: 8,
+    },
+    strengthBars: {
+        flexDirection: 'row',
+        gap: 4,
+        flex: 1,
+    },
+    strengthBar: {
+        flex: 1,
+        height: 4,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 2,
+    },
+    strengthBarWeak: {
+        backgroundColor: '#EF4444',
+    },
+    strengthBarMedium: {
+        backgroundColor: '#F59E0B',
+    },
+    strengthBarStrong: {
+        backgroundColor: '#10B981',
+    },
+    strengthText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    strengthTextWeak: {
+        color: '#EF4444',
+    },
+    strengthTextMedium: {
+        color: '#F59E0B',
+    },
+    strengthTextStrong: {
+        color: '#10B981',
     },
     genderContainer: {
         flexDirection: 'row',
@@ -592,7 +777,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 24,
+        marginTop: 16,
     },
     loginText: {
         fontSize: 14,

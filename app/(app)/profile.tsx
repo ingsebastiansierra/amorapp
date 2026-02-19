@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/core/store/useAuthStore';
@@ -86,7 +87,7 @@ export default function ProfileScreen() {
     if (loading) {
         return (
             <View style={styles.container}>
-                <SafeAreaView style={styles.safeArea}>
+                <SafeAreaView style={styles.safeArea} edges={['top']}>
                     <Text style={styles.loadingText}>Cargando...</Text>
                 </SafeAreaView>
             </View>
@@ -95,7 +96,7 @@ export default function ProfileScreen() {
 
     return (
         <View style={styles.container}>
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
                 {/* Header */}
                 <View style={styles.header}>
                     <Pressable style={styles.backButton} onPress={() => router.back()}>

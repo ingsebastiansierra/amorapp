@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HeartButton } from '@shared/components/HeartButton';
 import { EmotionalStateSelector } from '@shared/components/EmotionalStateSelector';
@@ -31,7 +32,7 @@ export const HomeScreen: React.FC = () => {
             colors={myStateConfig?.gradient || ['#667eea', '#764ba2']}
             style={styles.container}
         >
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
                 <View style={styles.header}>
                     <Animated.View style={{ opacity: 1 }}>
                         <Text style={styles.partnerStatus}>

@@ -207,26 +207,18 @@ export function PersonalGalleryScreen() {
     };
 
     const handlePhotoPress = (photo: PersonalGalleryImage) => {
-        console.log('📸 Photo pressed:', photo.id);
-        console.log('🔄 Selection mode:', selectionMode);
-        console.log('📂 Active tab:', activeTab);
-
         if (selectionMode && activeTab === 'my-photos') {
             // Modo selección: toggle selección
             const newSelected = new Set(selectedPhotos);
             if (newSelected.has(photo.id)) {
                 newSelected.delete(photo.id);
-                console.log('➖ Deselected:', photo.id);
             } else {
                 newSelected.add(photo.id);
-                console.log('➕ Selected:', photo.id);
             }
             setSelectedPhotos(newSelected);
-            console.log('📊 Total selected:', newSelected.size);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         } else {
             // Modo normal: abrir modal
-            console.log('🖼️ Opening modal');
             setViewingPhoto(photo);
             setShowViewModal(true);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

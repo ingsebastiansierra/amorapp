@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Palpitos",
+    "name": "MoodPareja – Chat, ligar & Sentimientos",
     "slug": "palpitos",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FF6B9D"
+      "backgroundColor": "#FFFFFF"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -29,7 +29,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FF6B9D"
+        "backgroundColor": "#FFFFFF"
       },
       "package": "com.palpitos.app",
       "versionCode": 1,

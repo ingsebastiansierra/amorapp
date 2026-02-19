@@ -1,4 +1,3 @@
-// Pantalla para ver y enviar imágenes privadas
 import React, { useEffect, useState } from 'react';
 import {
     View,
@@ -6,9 +5,9 @@ import {
     StyleSheet,
     FlatList,
     RefreshControl,
-    SafeAreaView,
     Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePrivateImages } from '@/shared/hooks/usePrivateImages';
 import { PrivateImageCard } from '@/shared/components/PrivateImageCard';
@@ -60,7 +59,7 @@ export function PrivateMediaScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header con botón de volver */}
             <View style={styles.header}>
                 <Pressable

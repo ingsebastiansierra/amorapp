@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, Modal, ScrollView, Animated } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, Modal, ScrollView, Animated, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,13 +16,7 @@ export default function LoginScreen() {
     const { signIn, enterDemoMode, demoMode } = useAuthStore();
     const router = useRouter();
 
-    // Animaciones para los corazones flotantes
-    const heart1Rotate = useRef(new Animated.Value(0)).current;
-    const heart1Scale = useRef(new Animated.Value(1)).current;
-    const heart2Rotate = useRef(new Animated.Value(0)).current;
-    const heart2Scale = useRef(new Animated.Value(1)).current;
-    const heart3Rotate = useRef(new Animated.Value(0)).current;
-    const heart3Scale = useRef(new Animated.Value(1)).current;
+    // Animaciones
     const logoScale = useRef(new Animated.Value(1)).current;
     const borderRotate = useRef(new Animated.Value(0)).current;
 
@@ -51,91 +45,7 @@ export default function LoginScreen() {
                 useNativeDriver: true,
             })
         ).start();
-
-        // Animación corazón 1 (rotación y escala)
-        Animated.loop(
-            Animated.parallel([
-                Animated.timing(heart1Rotate, {
-                    toValue: 1,
-                    duration: 4000,
-                    useNativeDriver: true,
-                }),
-                Animated.sequence([
-                    Animated.timing(heart1Scale, {
-                        toValue: 1.2,
-                        duration: 2000,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(heart1Scale, {
-                        toValue: 1,
-                        duration: 2000,
-                        useNativeDriver: true,
-                    }),
-                ]),
-            ])
-        ).start();
-
-        // Animación corazón 2 (rotación inversa)
-        Animated.loop(
-            Animated.parallel([
-                Animated.timing(heart2Rotate, {
-                    toValue: 1,
-                    duration: 5000,
-                    useNativeDriver: true,
-                }),
-                Animated.sequence([
-                    Animated.timing(heart2Scale, {
-                        toValue: 1.3,
-                        duration: 2500,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(heart2Scale, {
-                        toValue: 1,
-                        duration: 2500,
-                        useNativeDriver: true,
-                    }),
-                ]),
-            ])
-        ).start();
-
-        // Animación corazón 3
-        Animated.loop(
-            Animated.parallel([
-                Animated.timing(heart3Rotate, {
-                    toValue: 1,
-                    duration: 6000,
-                    useNativeDriver: true,
-                }),
-                Animated.sequence([
-                    Animated.timing(heart3Scale, {
-                        toValue: 1.15,
-                        duration: 3000,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(heart3Scale, {
-                        toValue: 1,
-                        duration: 3000,
-                        useNativeDriver: true,
-                    }),
-                ]),
-            ])
-        ).start();
     }, []);
-
-    const heart1RotateInterpolate = heart1Rotate.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0deg', '360deg'],
-    });
-
-    const heart2RotateInterpolate = heart2Rotate.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['360deg', '0deg'],
-    });
-
-    const heart3RotateInterpolate = heart3Rotate.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0deg', '360deg'],
-    });
 
     const borderRotateInterpolate = borderRotate.interpolate({
         inputRange: [0, 1],
@@ -223,65 +133,17 @@ export default function LoginScreen() {
             >
                 {/* Logo y Título */}
                 <View style={styles.header}>
-                    <View style={styles.logoContainer}>
-                        {/* Iconos flotantes animados */}
-                        <Animated.View
-                            style={[
-                                styles.floatingHeart,
-                                styles.floatingHeart1,
-                                {
-                                    transform: [
-                                        { rotate: heart1RotateInterpolate },
-                                        { scale: heart1Scale },
-                                    ],
-                                },
-                            ]}
-                        >
-                            <Ionicons name="heart" size={24} color="#f093fb" />
-                        </Animated.View>
-
-                        <Animated.View
-                            style={[
-                                styles.floatingHeart,
-                                styles.floatingHeart2,
-                                {
-                                    transform: [
-                                        { rotate: heart2RotateInterpolate },
-                                        { scale: heart2Scale },
-                                    ],
-                                },
-                            ]}
-                        >
-                            <Ionicons name="chatbubble-ellipses" size={20} color="#a8b5ff" />
-                        </Animated.View>
-
-                        <Animated.View
-                            style={[
-                                styles.floatingHeart,
-                                styles.floatingHeart3,
-                                {
-                                    transform: [
-                                        { rotate: heart3RotateInterpolate },
-                                        { scale: heart3Scale },
-                                    ],
-                                },
-                            ]}
-                        >
-                            <Ionicons name="sparkles" size={18} color="#764ba2" />
-                        </Animated.View>
-
-                        {/* Logo principal con animación */}
-                        <Animated.View
-                            style={[
-                                styles.logoCircle,
-                                {
-                                    transform: [{ scale: logoScale }],
-                                },
-                            ]}
-                        >
-                            <Ionicons name="people" size={60} color="#667eea" />
-                        </Animated.View>
-                    </View>
+                    <Animated.View
+                        style={{
+                            transform: [{ scale: logoScale }],
+                        }}
+                    >
+                        <Image
+                            source={require('../../assets/icon.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
+                    </Animated.View>
                     <Text style={styles.title}>Palpitos</Text>
                     <Text style={styles.subtitle}>Conéctate con tu persona favorita</Text>
                 </View>
@@ -510,64 +372,39 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
-        paddingTop: 60,
-        paddingBottom: 40,
+        paddingTop: 40,
+        paddingBottom: 30,
         paddingHorizontal: 24,
     },
     header: {
         alignItems: 'center',
-        marginBottom: 40,
+        marginBottom: 24,
     },
-    logoContainer: {
-        position: 'relative',
-        width: 200,
-        height: 200,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    logoCircle: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: '#FFF',
-        justifyContent: 'center',
-        alignItems: 'center',
+    logo: {
+        width: 80,
+        height: 80,
+        marginBottom: 12,
+        borderRadius: 18,
         shadowColor: '#667eea',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 10,
-    },
-    floatingHeart: {
-        position: 'absolute',
-    },
-    floatingHeart1: {
-        top: 20,
-        right: 30,
-    },
-    floatingHeart2: {
-        bottom: 30,
-        left: 20,
-    },
-    floatingHeart3: {
-        top: 60,
-        left: 10,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 5,
     },
     title: {
-        fontSize: 36,
+        fontSize: 28,
         fontWeight: '700',
         color: '#FFF',
-        marginBottom: 8,
+        marginBottom: 4,
     },
     subtitle: {
-        fontSize: 15,
+        fontSize: 14,
         color: '#FFF',
         textAlign: 'center',
     },
     cardWrapper: {
         position: 'relative',
-        marginBottom: 24,
+        marginBottom: 16,
         padding: 3,
     },
     animatedBorder: {
@@ -594,10 +431,10 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     cardTitle: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '700',
         color: '#2D3748',
-        marginBottom: 24,
+        marginBottom: 20,
         textAlign: 'center',
     },
     demoWarning: {
@@ -621,7 +458,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     inputGroup: {
-        marginBottom: 20,
+        marginBottom: 16,
     },
     inputLabel: {
         fontSize: 14,
@@ -689,7 +526,7 @@ const styles = StyleSheet.create({
     divider: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: 24,
+        marginVertical: 16,
     },
     dividerLine: {
         flex: 1,
@@ -728,7 +565,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 24,
+        marginTop: 16,
     },
     signupText: {
         fontSize: 14,
@@ -744,7 +581,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 24,
+        marginTop: 16,
         gap: 8,
     },
     footerLink: {

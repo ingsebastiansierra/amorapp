@@ -76,7 +76,6 @@ export function PrivateImageCard({ image }: Props) {
             if (image.max_views === 1) {
                 try {
                     await mediaService.deleteImage(image.id, image.storage_path);
-                    console.log('✅ Imagen eliminada de storage y BD');
                 } catch (error) {
                     console.error('❌ Error al eliminar imagen:', error);
                 }

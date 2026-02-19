@@ -44,7 +44,6 @@ export const useRelationshipTracking = (coupleId: string | null) => {
 
             if (error) throw error;
 
-            console.log('✅ Sync recorded:', data);
             setCurrentSyncId(data);
             
             // Recargar estadísticas
@@ -68,18 +67,14 @@ export const useRelationshipTracking = (coupleId: string | null) => {
                 });
 
             if (error) throw error;
-
-            console.log('✅ Sync ended:', currentSyncId);
+            
+            setCurrentSyncId(null);
             
             // BORRAR TODO EL HISTORIAL cuando termina la sincronía
             if (coupleId) {
-                console.log('🗑️ Borrando historial al terminar sincronía...');
-                
                 // Importar el servicio de limpieza
                 const { autoCleanupManager } = await import('@/core/services/autoCleanupManager');
                 await autoCleanupManager.cleanupOnRelationshipEnd(coupleId);
-                
-                console.log('✅ Historial borrado completamente');
             }
             
             setCurrentSyncId(null);
@@ -100,7 +95,6 @@ export const useRelationshipTracking = (coupleId: string | null) => {
 
             if (error) throw error;
 
-            console.log('✅ Relationship start date set:', date);
             await loadSyncStats();
             return true;
         } catch (error) {

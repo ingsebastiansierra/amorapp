@@ -1,4 +1,3 @@
-// Pantalla para ver y gestionar notas de voz
 import React, { useEffect } from 'react';
 import {
     View,
@@ -6,9 +5,9 @@ import {
     StyleSheet,
     FlatList,
     RefreshControl,
-    SafeAreaView,
     Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useVoiceNotes } from '@/shared/hooks/useVoiceNotes';
 import { VoiceNoteCard } from '@/shared/components/VoiceNoteCard';
@@ -22,7 +21,7 @@ export function VoiceNotesScreen() {
     }, []);
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header con botón de volver */}
             <View style={styles.header}>
                 <Pressable

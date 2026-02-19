@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/core/config/supabase';
@@ -66,7 +67,7 @@ export default function PartnerProfileScreen() {
     if (loading) {
         return (
             <LinearGradient colors={['#FF6B9D', '#FFA8C5']} style={styles.container}>
-                <SafeAreaView style={styles.safeArea}>
+                <SafeAreaView style={styles.safeArea} edges={['top']}>
                     <Text style={styles.loadingText}>Cargando...</Text>
                 </SafeAreaView>
             </LinearGradient>
@@ -75,7 +76,7 @@ export default function PartnerProfileScreen() {
 
     return (
         <LinearGradient colors={['#FF6B9D', '#FFA8C5']} style={styles.container}>
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     {/* Header */}
                     <View style={styles.header}>

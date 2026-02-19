@@ -76,10 +76,8 @@ function MessagesTabIcon({ color, isSynced, focused }: { color: string; isSynced
 }
 
 export default function AppLayout() {
-    const { user } = useAuthStore();
     const { myState, partnerState } = useEmotionalStore();
     const loadTheme = useThemeStore(state => state.loadTheme);
-    const theme = useThemeStore(state => state.theme);
     const [isSynced, setIsSynced] = useState(false);
 
     // Cargar tema al iniciar
@@ -110,15 +108,15 @@ export default function AppLayout() {
                     shadowRadius: 8,
                 },
                 tabBarActiveTintColor: '#FF6B9D',
-                tabBarInactiveTintColor: '#9CA3AF',
+                tabBarInactiveTintColor: '#4B5563',
                 tabBarLabelStyle: {
                     fontSize: 10,
                     fontWeight: '600',
-                    marginTop: 6,
+                    marginTop: 1,
                     letterSpacing: 0.3,
                 },
                 tabBarIconStyle: {
-                    marginTop: 4,
+                    marginTop: 5,
                 },
             }}
         >
@@ -127,9 +125,13 @@ export default function AppLayout() {
                 options={{
                     title: 'INICIO',
                     tabBarIcon: ({ color, focused }) => (
-                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-                            <Ionicons name={focused ? "home" : "home-outline"} size={28} color={focused ? '#FFF' : color} />
-                        </View>
+                        focused ? (
+                            <View style={styles.fireIconWrapper}>
+                                <Ionicons name="flame" size={25} color="#FF6B9D" />
+                            </View>
+                        ) : (
+                            <Ionicons name="home-outline" size={28} color={color} />
+                        )
                     ),
                 }}
             />
@@ -138,9 +140,13 @@ export default function AppLayout() {
                 options={{
                     title: 'MENSAJES',
                     tabBarIcon: ({ color, focused }) => (
-                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-                            <MessagesTabIcon color={focused ? '#FFF' : color} isSynced={isSynced} focused={focused} />
-                        </View>
+                        focused ? (
+                            <View style={styles.fireIconWrapper}>
+                                <Ionicons name="flame" size={25} color="#FF6B9D" />
+                            </View>
+                        ) : (
+                            <MessagesTabIcon color={color} isSynced={isSynced} focused={focused} />
+                        )
                     ),
                     tabBarStyle: { display: 'none' },
                 }}
@@ -163,9 +169,13 @@ export default function AppLayout() {
                 options={{
                     title: 'GALERÍA',
                     tabBarIcon: ({ color, focused }) => (
-                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-                            <Ionicons name={focused ? "images" : "images-outline"} size={28} color={focused ? '#FFF' : color} />
-                        </View>
+                        focused ? (
+                            <View style={styles.fireIconWrapper}>
+                                <Ionicons name="flame" size={25} color="#FF6B9D" />
+                            </View>
+                        ) : (
+                            <Ionicons name="images-outline" size={28} color={color} />
+                        )
                     ),
                 }}
             />
@@ -174,9 +184,13 @@ export default function AppLayout() {
                 options={{
                     title: 'PERFIL',
                     tabBarIcon: ({ color, focused }) => (
-                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-                            <Ionicons name={focused ? "person-circle" : "person-circle-outline"} size={28} color={focused ? '#FFF' : color} />
-                        </View>
+                        focused ? (
+                            <View style={styles.fireIconWrapper}>
+                                <Ionicons name="flame" size={25} color="#FF6B9D" />
+                            </View>
+                        ) : (
+                            <Ionicons name="person-circle-outline" size={28} color={color} />
+                        )
                     ),
                 }}
             />
@@ -211,20 +225,15 @@ export default function AppLayout() {
                     href: null,
                 }}
             />
-            <Tabs.Screen
-                name="home-backup"
-                options={{
-                    href: null,
-                }}
-            />
-            <Tabs.Screen
-                name="home-old"
-                options={{
-                    href: null,
-                }}
-            />
+
             <Tabs.Screen
                 name="theme-settings"
+                options={{
+                    href: null,
+                }}
+            />
+            <Tabs.Screen
+                name="calendar"
                 options={{
                     href: null,
                 }}
@@ -234,15 +243,8 @@ export default function AppLayout() {
 }
 
 const styles = StyleSheet.create({
-    iconWrapper: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    iconWrapperActive: {
-        backgroundColor: '#FF6B9D',
+    fireIconWrapper: {
+        marginBottom: 4,
     },
     iconContainer: {
         position: 'relative',

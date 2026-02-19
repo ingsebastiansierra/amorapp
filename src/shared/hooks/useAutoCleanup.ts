@@ -24,7 +24,6 @@ export function useAutoCleanup(options: UseAutoCleanupOptions = {}) {
     if (!enabled) return;
 
     try {
-      console.log('🧹 Ejecutando limpieza automática...');
       const result = await cleanupService.cleanupOldData(
         daysToKeep,
         daysToKeep,
@@ -39,12 +38,7 @@ export function useAutoCleanup(options: UseAutoCleanupOptions = {}) {
           result.images_deleted;
 
         if (totalDeleted > 0) {
-          console.log(`✅ Limpieza completada: ${totalDeleted} elementos borrados`);
-          console.log(`   • Mensajes: ${result.messages_deleted}`);
-          console.log(`   • Notas de voz: ${result.voice_notes_deleted}`);
-          console.log(`   • Imágenes: ${result.images_deleted}`);
-        } else {
-          console.log('ℹ️ No hay datos antiguos para limpiar');
+          // Limpieza completada
         }
       }
     } catch (error) {

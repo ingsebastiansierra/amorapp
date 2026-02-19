@@ -32,7 +32,7 @@ export function useNotifications() {
         const initNotifications = async () => {
             const token = await notificationService.initialize(user.id);
             if (token) {
-                console.log('✅ Notificaciones inicializadas');
+                // Notificaciones inicializadas
             }
         };
 
@@ -41,7 +41,6 @@ export function useNotifications() {
         // Listener para notificaciones recibidas mientras la app está abierta
         notificationListener.current = notificationService.addNotificationReceivedListener(
             (notification) => {
-                console.log('📬 Notificación recibida:', notification);
                 // Aquí puedes agregar lógica adicional, como actualizar el estado
             }
         );
@@ -70,7 +69,6 @@ export function useNotifications() {
                 }
             } catch (error) {
                 // Ignorar errores en Expo Go
-                console.log('⚠️ Error limpiando listeners (normal en Expo Go)');
             }
         };
     }, [user]);

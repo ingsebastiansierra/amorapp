@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Pressable, Modal, Animated, TextInput, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal, Animated, TextInput, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -169,7 +170,6 @@ export default function HomeScreen() {
             setIsSynced(synced);
             if (synced) {
                 // 🎯 NUEVA SINCRONIZACIÓN DETECTADA
-                console.log('✨ Sincronización detectada:', myState);
 
                 // Registrar en base de datos
                 if (coupleId && myState) {
@@ -500,7 +500,6 @@ export default function HomeScreen() {
                 .maybeSingle();
 
             if (data) {
-                console.log('📸 Avatar URL loaded:', data.avatar_url);
                 setMyProfile(data);
             }
         } catch (error) {
@@ -622,24 +621,15 @@ export default function HomeScreen() {
 
     const handleSendSyncMessage = async () => {
         if (!syncMessage.trim() || !partner || !user || !myState) {
-            console.log('⚠️ Cannot send message:', {
-                hasMessage: !!syncMessage.trim(),
-                hasPartner: !!partner,
-                hasUser: !!user,
-                hasState: !!myState
-            });
             return;
         }
 
         // Verificar si se alcanzó el límite
         if (emotionBlocked) {
-
             return;
         }
 
         try {
-
-
             // Obtener couple_id
             const { data: userData } = await supabase
                 .from('users')
@@ -648,17 +638,8 @@ export default function HomeScreen() {
                 .single();
 
             if (!userData?.couple_id) {
-
                 return;
             }
-
-
-            console.log('📝 Message data:', {
-                from: user.id,
-                to: partner.id,
-                message: syncMessage.trim(),
-                emotion: myState
-            });
 
             // Enviar mensaje
             const { data, error } = await supabase
@@ -698,7 +679,7 @@ export default function HomeScreen() {
             setSyncMessage('');
             setShowSyncModal(false);
         } catch (error) {
-            console.error('❌ Error sending sync message:', error);
+            // Error sending sync message
         }
     };
 
@@ -707,7 +688,7 @@ export default function HomeScreen() {
 
     return (
         <View style={styles.container}>
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
                 {/* Header simple */}
                 <View style={styles.header}>
                     <Pressable onPress={() => setShowMenu(true)}>
@@ -716,7 +697,6 @@ export default function HomeScreen() {
                                 key={myProfile.avatar_url}
                                 source={{ uri: avatarService.getAvatarUrl(myProfile.avatar_url) || undefined }}
                                 style={styles.headerAvatar}
-                                onError={(error) => console.log('Error loading avatar:', error.nativeEvent.error)}
                             />
                         ) : (
                             <View style={styles.headerAvatarPlaceholder}>

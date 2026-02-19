@@ -62,35 +62,10 @@ export default function MessagesScreen() {
     const [viewingImage, setViewingImage] = useState<{ id: string; url: string; caption?: string } | null>(null);
     const [isLoadingImage, setIsLoadingImage] = useState(false);
     const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const { backgroundImage, backgroundOpacity, messageColorTheme, setBackgroundImage, setBackgroundOpacity, loadBackground, clearBackground } = useChatBackgroundStore();
 
     // Obtener colores del tema seleccionado
     const themeColors = getMessageThemeColors(messageColorTheme);
-
-    // Lista de emojis comunes
-    const commonEmojis = [
-        '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂',
-        '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩',
-        '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜',
-        '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐',
-        '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬',
-        '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒',
-        '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '😶‍🌫️', '🥴',
-        '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐',
-        '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳',
-        '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭',
-        '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱',
-        '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️',
-        '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖',
-        '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍',
-        '🤎', '💔', '❤️‍🔥', '❤️‍🩹', '💕', '💞', '💓', '💗',
-        '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️',
-        '👍', '👎', '👊', '✊', '🤛', '🤜', '🤞', '✌️',
-        '🤟', '🤘', '👌', '🤌', '🤏', '👈', '👉', '👆',
-        '👇', '☝️', '✋', '🤚', '🖐️', '🖖', '👋', '🤙',
-        '💪', '🦾', '🖕', '✍️', '🙏', '🦶', '🦵', '🦿',
-    ];
 
     // Función para reproducir sonido de envío
     const playSendSound = async () => {
@@ -132,8 +107,8 @@ export default function MessagesScreen() {
     useEffect(() => {
         if (user) {
             loadMessages();
-            // Polling cada 3 segundos
-            const interval = setInterval(loadMessages, 3000);
+            // Polling cada 5 segundos (reducido de 3 para mejor rendimiento)
+            const interval = setInterval(loadMessages, 5000);
             return () => clearInterval(interval);
         }
     }, [user, partner]);
@@ -141,7 +116,7 @@ export default function MessagesScreen() {
     // Polling para actualizar info de la pareja (incluyendo last_seen)
     useEffect(() => {
         if (partner) {
-            const partnerInterval = setInterval(loadPartnerInfo, 5000); // Cada 5 segundos
+            const partnerInterval = setInterval(loadPartnerInfo, 10000); // Cada 10 segundos (reducido de 5)
             return () => clearInterval(partnerInterval);
         }
     }, [partner]);
@@ -438,8 +413,33 @@ export default function MessagesScreen() {
             return;
         }
 
-        // Si no hay emoción actual, usar 'normal' como predeterminada
+        const messageText = newMessage.trim();
         const emotionToUse: EmotionalState = myCurrentEmotion || EmotionalState.NORMAL;
+
+        // Limpiar input inmediatamente para mejor UX
+        setNewMessage('');
+
+        // Crear mensaje optimista (se muestra inmediatamente)
+        const optimisticMessage: Message = {
+            id: `temp-${Date.now()}`,
+            message: messageText,
+            synced_emotion: emotionToUse,
+            created_at: new Date().toISOString(),
+            from_user_id: user.id,
+            read: false,
+            type: 'text',
+        };
+
+        // Agregar mensaje optimista a la UI
+        setMessages(prev => [...prev, optimisticMessage]);
+
+        // Scroll al final inmediatamente
+        setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 50);
+
+        // Reproducir sonido y haptic feedback
+        playSendSound();
 
         try {
             const { data: userData } = await supabase
@@ -449,6 +449,8 @@ export default function MessagesScreen() {
                 .maybeSingle();
 
             if (!userData?.couple_id) {
+                // Remover mensaje optimista si falla
+                setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
                 return;
             }
 
@@ -458,30 +460,33 @@ export default function MessagesScreen() {
                     couple_id: userData.couple_id,
                     from_user_id: user.id,
                     to_user_id: partner.id,
-                    message: newMessage.trim(),
+                    message: messageText,
                     synced_emotion: emotionToUse,
                 });
 
             if (error) {
+                // Remover mensaje optimista si falla
+                setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
                 return;
             }
 
             // Enviar notificación push a la pareja
             if (partner.push_token && userData.name) {
-                await notificationService.sendMessageNotification(
+                notificationService.sendMessageNotification(
                     partner.push_token,
                     userData.name,
-                    newMessage.trim(),
+                    messageText,
                     emotionToUse
-                );
+                ).catch(() => {
+                    // Ignorar errores de notificación
+                });
             }
 
-            // Reproducir sonido y haptic feedback
-            await playSendSound();
-            setNewMessage('');
-            loadMessages(); // Recargar mensajes inmediatamente
+            // Recargar mensajes para obtener el ID real del servidor
+            loadMessages();
         } catch (error) {
-            // Error sending message
+            // Remover mensaje optimista si hay error
+            setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
         }
     };
 
@@ -807,40 +812,7 @@ export default function MessagesScreen() {
                             multiline
                             maxLength={200}
                         />
-                        <Pressable
-                            style={styles.emojiButton}
-                            onPress={() => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                setShowEmojiPicker(!showEmojiPicker);
-                            }}
-                        >
-                            <Ionicons name="happy-outline" size={24} color="#9CA3AF" />
-                        </Pressable>
                     </View>
-
-                    {/* Selector de emojis */}
-                    {showEmojiPicker && (
-                        <View style={styles.emojiPickerContainer}>
-                            <ScrollView
-                                horizontal={false}
-                                showsVerticalScrollIndicator={false}
-                                contentContainerStyle={styles.emojiGrid}
-                            >
-                                {commonEmojis.map((emoji, index) => (
-                                    <Pressable
-                                        key={index}
-                                        style={styles.emojiItem}
-                                        onPress={() => {
-                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                            setNewMessage(newMessage + emoji);
-                                        }}
-                                    >
-                                        <Text style={styles.emojiText}>{emoji}</Text>
-                                    </Pressable>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
 
                     {/* Mostrar botón de voz cuando no hay texto, botón de enviar cuando hay texto */}
                     {!newMessage.trim() && partner ? (
@@ -1191,48 +1163,7 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: '#181113',
         maxHeight: 80,
-    },
-    emojiButton: {
-        width: 32,
-        height: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 8,
-    },
-    emojiPickerContainer: {
-        position: 'absolute',
-        bottom: 70,
-        left: 0,
-        right: 0,
-        backgroundColor: '#FFF',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        height: 280,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 8,
-        paddingTop: 12,
-        paddingBottom: 12,
-    },
-    emojiGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        paddingHorizontal: 4,
-        paddingBottom: 16,
-        alignItems: 'flex-start',
-    },
-    emojiItem: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        margin: 4,
-    },
-    emojiText: {
-        fontSize: 30,
-        lineHeight: 36,
+        paddingVertical: 8,
     },
     sendButton: {
         width: 40,

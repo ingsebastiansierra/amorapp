@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Pressable, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/core/store/useAuthStore';
@@ -200,7 +201,7 @@ export default function LinkPartnerScreen() {
 
     return (
         <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
                 <View style={styles.content}>
                     {/* Header */}
                     <View style={styles.header}>
