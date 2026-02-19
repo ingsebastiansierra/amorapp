@@ -34,13 +34,15 @@
       "package": "com.palpitos.app",
       "versionCode": 1,
       "permissions": [
-        "VIBRATE",
-        "NOTIFICATIONS",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES",
-        "RECORD_AUDIO"
+        "android.permission.VIBRATE",
+        "android.permission.NOTIFICATIONS",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
       ],
       "softwareKeyboardLayoutMode": "pan"
     },
@@ -87,8 +89,11 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "abcd9d33-058f-4176-957c-ae4f785bf3d4"
-      }
-    }
+        "projectId": "b16f321a-b17f-4510-a271-34202c1cc7a7"
+      },
+      "supabaseUrl": "https://rrimgqumfozqfpskthoc.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyaW1ncXVtZm96cWZwc2t0aG9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3MDgxMTcsImV4cCI6MjA4MzI4NDExN30.KEi1p-DgkmDYSsqrBmUYknZ7RoA_KvllWgHWx1pEKfg"
+    },
+    "owner": "sebasing03"
   }
 }
