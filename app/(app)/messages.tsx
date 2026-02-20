@@ -20,6 +20,8 @@ import { mediaService } from '@/core/services/mediaService';
 import { notificationService } from '@/core/services/notificationService';
 import { useChatBackgroundStore } from '@/core/store/useChatBackgroundStore';
 import { getMessageThemeColors } from '@/core/config/messageThemes';
+import { SwipeableMessage } from '@/shared/components/SwipeableMessage';
+import { galleryService } from '@/core/services/galleryService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,6 +40,13 @@ interface Message {
     voice_storage_path?: string;
     voice_listened?: boolean;
     voice_waveform?: number[];
+    reply_to_message_id?: string | null;
+    replied_message?: {
+        id: string;
+        message: string;
+        from_user_id: string;
+        type?: 'text' | 'image' | 'voice';
+    } | null;
 }
 
 interface PartnerInfo {
@@ -62,6 +71,13 @@ export default function MessagesScreen() {
     const [viewingImage, setViewingImage] = useState<{ id: string; url: string; caption?: string } | null>(null);
     const [isLoadingImage, setIsLoadingImage] = useState(false);
     const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
+    const [showPartnerProfile, setShowPartnerProfile] = useState(false);
+    const [partnerPhotos, setPartnerPhotos] = useState<any[]>([]);
+    const [viewingPartnerPhoto, setViewingPartnerPhoto] = useState<string | null>(null);
+    const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+    const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+    const shouldScrollToEnd = useRef(true); // Controla si debe hacer scroll al final
+    const messageRefs = useRef<Record<string, any>>({});
     const { backgroundImage, backgroundOpacity, messageColorTheme, setBackgroundImage, setBackgroundOpacity, loadBackground, clearBackground } = useChatBackgroundStore();
 
     // Obtener colores del tema seleccionado
@@ -107,9 +123,47 @@ export default function MessagesScreen() {
     useEffect(() => {
         if (user) {
             loadMessages();
-            // Polling cada 5 segundos (reducido de 3 para mejor rendimiento)
-            const interval = setInterval(loadMessages, 5000);
-            return () => clearInterval(interval);
+
+            // Suscripción en tiempo real para mensajes nuevos
+            const channel = supabase
+                .channel('sync-messages-realtime')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'sync_messages',
+                        filter: `to_user_id=eq.${user.id}`,
+                    },
+                    (payload) => {
+                        console.log('📨 Nuevo mensaje recibido en tiempo real:', payload);
+                        // Recargar mensajes cuando llega uno nuevo
+                        loadMessages();
+                    }
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'sync_messages',
+                        filter: `to_user_id=eq.${user.id}`,
+                    },
+                    (payload) => {
+                        console.log('📝 Mensaje actualizado en tiempo real:', payload);
+                        // Recargar mensajes cuando se actualiza uno (ej: marcado como leído)
+                        loadMessages();
+                    }
+                )
+                .subscribe();
+
+            // Polling de respaldo cada 30 segundos (reducido de 5)
+            const interval = setInterval(loadMessages, 30000);
+
+            return () => {
+                supabase.removeChannel(channel);
+                clearInterval(interval);
+            };
         }
     }, [user, partner]);
 
@@ -276,6 +330,27 @@ export default function MessagesScreen() {
                 return;
             }
 
+            // Si hay mensajes con reply_to_message_id, cargar los mensajes citados
+            const messageIds = (messagesData || [])
+                .map(msg => msg.reply_to_message_id)
+                .filter(id => id != null);
+
+            let repliedMessagesMap: Record<string, any> = {};
+
+            if (messageIds.length > 0) {
+                const { data: repliedMessages } = await supabase
+                    .from('sync_messages')
+                    .select('id, message, from_user_id')
+                    .in('id', messageIds);
+
+                if (repliedMessages) {
+                    repliedMessagesMap = repliedMessages.reduce((acc, msg) => {
+                        acc[msg.id] = msg;
+                        return acc;
+                    }, {} as Record<string, any>);
+                }
+            }
+
             // Cargar imágenes privadas como mensajes
             const { data: imagesData, error: imagesError } = await supabase
                 .from('images_private')
@@ -302,6 +377,14 @@ export default function MessagesScreen() {
             const textMessages: Message[] = (messagesData || []).map(msg => ({
                 ...msg,
                 type: 'text' as const,
+                replied_message: msg.reply_to_message_id && repliedMessagesMap[msg.reply_to_message_id]
+                    ? {
+                        id: repliedMessagesMap[msg.reply_to_message_id].id,
+                        message: repliedMessagesMap[msg.reply_to_message_id].message,
+                        from_user_id: repliedMessagesMap[msg.reply_to_message_id].from_user_id,
+                        type: 'text' as const,
+                    }
+                    : null,
             }));
 
             const imageMessages: Message[] = (imagesData || []).map(img => ({
@@ -338,10 +421,13 @@ export default function MessagesScreen() {
 
             setMessages(allMessages);
 
-            // Scroll al final después de cargar mensajes
-            setTimeout(() => {
-                scrollViewRef.current?.scrollToEnd({ animated: false });
-            }, 100);
+            // Scroll al final solo si la bandera está activa (primera carga o después de enviar)
+            if (shouldScrollToEnd.current) {
+                setTimeout(() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: false });
+                }, 100);
+                shouldScrollToEnd.current = false; // Desactivar después del primer scroll
+            }
 
             // Marcar como leídos los mensajes de texto recibidos
             const unreadIds = (messagesData || [])
@@ -415,9 +501,11 @@ export default function MessagesScreen() {
 
         const messageText = newMessage.trim();
         const emotionToUse: EmotionalState = myCurrentEmotion || EmotionalState.NORMAL;
+        const replyToId = replyingTo?.id || null;
 
-        // Limpiar input inmediatamente para mejor UX
+        // Limpiar input y respuesta inmediatamente para mejor UX
         setNewMessage('');
+        setReplyingTo(null);
 
         // Crear mensaje optimista (se muestra inmediatamente)
         const optimisticMessage: Message = {
@@ -428,10 +516,20 @@ export default function MessagesScreen() {
             from_user_id: user.id,
             read: false,
             type: 'text',
+            reply_to_message_id: replyToId,
+            replied_message: replyingTo ? {
+                id: replyingTo.id,
+                message: replyingTo.message,
+                from_user_id: replyingTo.from_user_id,
+                type: replyingTo.type,
+            } : null,
         };
 
         // Agregar mensaje optimista a la UI
         setMessages(prev => [...prev, optimisticMessage]);
+
+        // Activar scroll automático para este mensaje
+        shouldScrollToEnd.current = true;
 
         // Scroll al final inmediatamente
         setTimeout(() => {
@@ -451,10 +549,11 @@ export default function MessagesScreen() {
             if (!userData?.couple_id) {
                 // Remover mensaje optimista si falla
                 setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+                Alert.alert('Error', 'No se pudo enviar el mensaje. No tienes pareja vinculada.');
                 return;
             }
 
-            const { error } = await supabase
+            const { data: insertedMessage, error } = await supabase
                 .from('sync_messages')
                 .insert({
                     couple_id: userData.couple_id,
@@ -462,31 +561,55 @@ export default function MessagesScreen() {
                     to_user_id: partner.id,
                     message: messageText,
                     synced_emotion: emotionToUse,
-                });
+                    reply_to_message_id: replyToId,
+                })
+                .select()
+                .single();
 
             if (error) {
+                console.error('❌ Error enviando mensaje:', error);
                 // Remover mensaje optimista si falla
                 setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+
+                // Mostrar error específico al usuario
+                if (error.message.includes('Demasiados mensajes')) {
+                    Alert.alert('Espera un momento', 'Estás enviando mensajes muy rápido. Espera unos segundos.');
+                } else if (error.message.includes('message_length')) {
+                    Alert.alert('Mensaje muy largo', 'El mensaje no puede tener más de 500 caracteres.');
+                } else {
+                    Alert.alert('Error', 'No se pudo enviar el mensaje. Intenta de nuevo.');
+                }
                 return;
+            }
+
+            // Reemplazar mensaje optimista con el real (sin recargar todo)
+            if (insertedMessage) {
+                setMessages(prev => prev.map(m =>
+                    m.id === optimisticMessage.id
+                        ? { ...insertedMessage, type: 'text' as const, replied_message: optimisticMessage.replied_message }
+                        : m
+                ));
             }
 
             // Enviar notificación push a la pareja
             if (partner.push_token && userData.name) {
-                notificationService.sendMessageNotification(
-                    partner.push_token,
-                    userData.name,
-                    messageText,
-                    emotionToUse
-                ).catch(() => {
-                    // Ignorar errores de notificación
-                });
+                try {
+                    await notificationService.sendMessageNotification(
+                        partner.push_token,
+                        userData.name,
+                        messageText,
+                        emotionToUse
+                    );
+                } catch (notifError) {
+                    console.error('⚠️ Error enviando notificación (mensaje ya guardado):', notifError);
+                    // No fallar el envío del mensaje si solo falla la notificación
+                }
             }
-
-            // Recargar mensajes para obtener el ID real del servidor
-            loadMessages();
         } catch (error) {
+            console.error('❌ Error general en handleSendMessage:', error);
             // Remover mensaje optimista si hay error
             setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+            Alert.alert('Error', 'No se pudo enviar el mensaje. Verifica tu conexión.');
         }
     };
 
@@ -586,6 +709,74 @@ export default function MessagesScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     };
 
+    const handleOpenPartnerProfile = async () => {
+        if (!partner) return;
+
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setShowPartnerProfile(true);
+
+        // Cargar fotos públicas de la pareja
+        try {
+            const { data: photos } = await supabase
+                .from('personal_gallery')
+                .select('*')
+                .eq('user_id', partner.id)
+                .eq('visibility', 'visible')
+                .order('created_at', { ascending: false })
+                .limit(6);
+
+            if (photos) {
+                setPartnerPhotos(photos);
+            }
+        } catch (error) {
+            console.error('Error loading partner photos:', error);
+        }
+    };
+
+    const handleViewPartnerPhoto = (photoUrl: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setViewingPartnerPhoto(photoUrl);
+    };
+
+    const handleViewPartnerAvatar = () => {
+        if (!partner?.avatar_url) return;
+        const avatarUrl = avatarService.getAvatarUrl(partner.avatar_url);
+        if (avatarUrl) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setViewingPartnerPhoto(avatarUrl);
+        }
+    };
+
+    const handleScrollToMessage = (messageId: string) => {
+        // Buscar el mensaje en la lista
+        const messageIndex = messages.findIndex(m => m.id === messageId);
+
+        if (messageIndex === -1) return;
+
+        // Hacer scroll al mensaje
+        const messageRef = messageRefs.current[messageId];
+        if (messageRef) {
+            messageRef.measureLayout(
+                scrollViewRef.current,
+                (x: number, y: number) => {
+                    scrollViewRef.current?.scrollTo({ y: y - 100, animated: true });
+
+                    // Resaltar el mensaje temporalmente
+                    setHighlightedMessageId(messageId);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+                    // Quitar el resaltado después de 2 segundos
+                    setTimeout(() => {
+                        setHighlightedMessageId(null);
+                    }, 2000);
+                },
+                () => {
+                    // Error en measureLayout, ignorar
+                }
+            );
+        }
+    };
+
     const renderMessage = (msg: Message) => {
         const isFromMe = msg.from_user_id === user?.id;
         const emotionConfig = EMOTIONAL_STATES[msg.synced_emotion as EmotionalState];
@@ -593,83 +784,135 @@ export default function MessagesScreen() {
         const isVoice = msg.type === 'voice';
 
         return (
-            <Pressable
+            <SwipeableMessage
                 key={msg.id}
-                style={[styles.messageRow, isFromMe && styles.messageRowMe]}
-                onPress={() => {
-                    if (isImage && msg.image_id && !isFromMe && !msg.image_expired) {
-                        handleOpenImage(msg.image_id);
-                    }
-                }}
-                disabled={!isImage || isFromMe || msg.image_expired}
+                onReply={() => setReplyingTo(msg)}
+                isFromMe={isFromMe}
             >
-                {!isFromMe && partner?.avatar_url && (
-                    <Image
-                        source={{ uri: avatarService.getAvatarUrl(partner.avatar_url) || undefined }}
-                        style={styles.messageAvatar}
-                    />
-                )}
+                <View style={[styles.messageRow, isFromMe && styles.messageRowMe]}>
+                    <Pressable
+                        style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, flex: 1 }}
+                        onPress={() => {
+                            if (isImage && msg.image_id && !isFromMe && !msg.image_expired) {
+                                handleOpenImage(msg.image_id);
+                            }
+                        }}
+                        disabled={!isImage || isFromMe || msg.image_expired}
+                    >
+                        {!isFromMe && partner?.avatar_url && (
+                            <Image
+                                source={{ uri: avatarService.getAvatarUrl(partner.avatar_url) || undefined }}
+                                style={styles.messageAvatar}
+                            />
+                        )}
 
-                <View style={[
-                    styles.messageBubble,
-                    isFromMe ? [styles.messageBubbleMe, { backgroundColor: themeColors.sentBackground }] : [styles.messageBubblePartner, { backgroundColor: themeColors.receivedBackground }],
-                    isImage && styles.messageBubbleImage,
-                    isVoice && styles.messageBubbleVoice
-                ]}>
-                    <View style={styles.messageHeader}>
-                        <Text style={styles.messageEmoji}>
-                            {isImage ? '📷' : isVoice ? '🎤' : (emotionConfig?.emoji || '💕')}
-                        </Text>
-                        <Text style={[styles.messageTime, isFromMe && styles.messageTimeMe]}>
-                            {formatTime(msg.created_at)}
-                        </Text>
-                    </View>
+                        <View
+                            ref={(ref) => { if (ref) messageRefs.current[msg.id] = ref; }}
+                            style={[
+                                styles.messageBubble,
+                                isFromMe ? [styles.messageBubbleMe, { backgroundColor: themeColors.sentBackground }] : [styles.messageBubblePartner, { backgroundColor: themeColors.receivedBackground }],
+                                isImage && styles.messageBubbleImage,
+                                isVoice && styles.messageBubbleVoice,
+                                highlightedMessageId === msg.id && styles.messageBubbleHighlighted
+                            ]}
+                        >
+                            <View style={styles.messageHeader}>
+                                <Text style={styles.messageEmoji}>
+                                    {isImage ? '📷' : isVoice ? '🎤' : (emotionConfig?.emoji || '💕')}
+                                </Text>
+                                <Text style={[styles.messageTime, isFromMe && styles.messageTimeMe]}>
+                                    {formatTime(msg.created_at)}
+                                </Text>
+                            </View>
 
-                    {isVoice && msg.voice_id && msg.voice_storage_path && msg.voice_duration ? (
-                        <VoiceMessagePlayer
-                            voiceId={msg.voice_id}
-                            storagePath={msg.voice_storage_path}
-                            duration={msg.voice_duration}
-                            waveform={msg.voice_waveform}
-                            isFromMe={isFromMe}
-                            onListened={() => {
-                                // Recargar mensajes después de escuchar
-                                loadMessages();
-                            }}
-                        />
-                    ) : isImage ? (
-                        <View>
-                            <Text style={[styles.messageText, isFromMe ? { color: themeColors.sentText } : { color: themeColors.receivedText }]}>
-                                {msg.message}
-                            </Text>
-                            {msg.image_expired ? (
-                                <Text style={[styles.imageStatus, isFromMe && styles.imageStatusMe]}>
-                                    ✓ Vista
-                                </Text>
-                            ) : !isFromMe ? (
-                                <Text style={[styles.imageStatus, styles.imageStatusUnread]}>
-                                    👆 Toca para ver (una vez)
-                                </Text>
+                            {/* Mensaje citado */}
+                            {msg.replied_message && (
+                                <Pressable
+                                    style={[
+                                        styles.quotedMessage,
+                                        isFromMe ? styles.quotedMessageMe : styles.quotedMessagePartner
+                                    ]}
+                                    onPress={() => handleScrollToMessage(msg.replied_message!.id)}
+                                >
+                                    <View style={[
+                                        styles.quotedMessageBar,
+                                        isFromMe ? styles.quotedMessageBarMe : styles.quotedMessageBarPartner
+                                    ]} />
+                                    <View style={styles.quotedMessageContent}>
+                                        <Text style={[
+                                            styles.quotedMessageName,
+                                            isFromMe ? styles.quotedMessageNameMe : styles.quotedMessageNamePartner
+                                        ]}>
+                                            {msg.replied_message.from_user_id === user?.id ? 'Tú' : partner?.name || 'Pareja'}
+                                        </Text>
+                                        <Text
+                                            style={[
+                                                styles.quotedMessageText,
+                                                isFromMe ? styles.quotedMessageTextMe : styles.quotedMessageTextPartner
+                                            ]}
+                                            numberOfLines={2}
+                                        >
+                                            {msg.replied_message.type === 'voice' ? '🎤 Nota de voz' :
+                                                msg.replied_message.type === 'image' ? '📷 Imagen' :
+                                                    msg.replied_message.message}
+                                        </Text>
+                                    </View>
+                                </Pressable>
+                            )}
+
+                            {isVoice && msg.voice_id && msg.voice_storage_path && msg.voice_duration ? (
+                                <VoiceMessagePlayer
+                                    voiceId={msg.voice_id}
+                                    storagePath={msg.voice_storage_path}
+                                    duration={msg.voice_duration}
+                                    waveform={msg.voice_waveform}
+                                    isFromMe={isFromMe}
+                                    onListened={() => {
+                                        loadMessages();
+                                    }}
+                                />
+                            ) : isVoice && msg.voice_id && !msg.voice_storage_path ? (
+                                <View style={styles.voiceSendingContainer}>
+                                    <Ionicons name="mic" size={20} color={isFromMe ? themeColors.sentText : themeColors.receivedText} />
+                                    <Text style={[styles.messageText, isFromMe ? { color: themeColors.sentText } : { color: themeColors.receivedText }]}>
+                                        Enviando nota de voz...
+                                    </Text>
+                                </View>
+                            ) : isImage ? (
+                                <View>
+                                    <Text style={[styles.messageText, isFromMe ? { color: themeColors.sentText } : { color: themeColors.receivedText }]}>
+                                        {msg.message}
+                                    </Text>
+                                    {msg.image_expired ? (
+                                        <Text style={[styles.imageStatus, isFromMe && styles.imageStatusMe]}>
+                                            ✓ Vista
+                                        </Text>
+                                    ) : !isFromMe ? (
+                                        <Text style={[styles.imageStatus, styles.imageStatusUnread]}>
+                                            👆 Toca para ver (una vez)
+                                        </Text>
+                                    ) : (
+                                        <Text style={[styles.imageStatus, isFromMe && styles.imageStatusMe]}>
+                                            Enviada
+                                        </Text>
+                                    )}
+                                </View>
                             ) : (
-                                <Text style={[styles.imageStatus, isFromMe && styles.imageStatusMe]}>
-                                    Enviada
+                                <Text style={[styles.messageText, isFromMe ? { color: themeColors.sentText } : { color: themeColors.receivedText }]}>
+                                    {msg.message}
                                 </Text>
                             )}
                         </View>
-                    ) : (
-                        <Text style={[styles.messageText, isFromMe ? { color: themeColors.sentText } : { color: themeColors.receivedText }]}>
-                            {msg.message}
-                        </Text>
-                    )}
-                </View>
 
-                {isFromMe && myProfile?.avatar_url && (
-                    <Image
-                        source={{ uri: avatarService.getAvatarUrl(myProfile.avatar_url) || undefined }}
-                        style={styles.messageAvatar}
-                    />
-                )}
-            </Pressable>
+                        {isFromMe && myProfile?.avatar_url && (
+                            <Image
+                                source={{ uri: avatarService.getAvatarUrl(myProfile.avatar_url) || undefined }}
+                                style={styles.messageAvatar}
+                            />
+                        )}
+                    </Pressable>
+                </View>
+            </SwipeableMessage>
         );
     };
 
@@ -701,17 +944,25 @@ export default function MessagesScreen() {
                         <>
                             <View style={styles.headerCenter}>
                                 {partner?.avatar_url && (
-                                    <Image
-                                        source={{ uri: avatarService.getAvatarUrl(partner.avatar_url) || undefined }}
-                                        style={styles.headerAvatar}
-                                    />
+                                    <Pressable onPress={handleViewPartnerAvatar}>
+                                        <Image
+                                            source={{ uri: avatarService.getAvatarUrl(partner.avatar_url) || undefined }}
+                                            style={styles.headerAvatar}
+                                        />
+                                    </Pressable>
                                 )}
-                                <View>
-                                    <Text style={styles.headerTitle}>{partner?.name || 'Pareja'}</Text>
-                                    <Text style={styles.headerSubtitle}>
+                                <Pressable
+                                    onPress={handleOpenPartnerProfile}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    style={{ flex: 1 }}
+                                >
+                                    <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+                                        {partner?.name || 'Pareja'}
+                                    </Text>
+                                    <Text style={styles.headerSubtitle} numberOfLines={1} ellipsizeMode="tail">
                                         {partner?.last_seen ? formatLastSeen(partner.last_seen) : 'Sin conexión'}
                                     </Text>
-                                </View>
+                                </Pressable>
                             </View>
 
                             <View style={styles.headerActions}>
@@ -787,55 +1038,115 @@ export default function MessagesScreen() {
                 </ImageBackground>
 
                 {/* Input de mensaje */}
-                <View style={styles.inputContainer}>
-                    {partner && (
-                        <View style={styles.imageButtonWrapper}>
-                            <ImageAttachButton
-                                toUserId={partner.id}
-                                onSent={() => {
-                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                                    loadMessages();
-                                }}
-                                size={28}
-                                color="#EB477E"
-                            />
+                <View style={styles.inputContainerWrapper}>
+                    {/* Preview del mensaje al que se está respondiendo */}
+                    {replyingTo && (
+                        <View style={styles.replyPreview}>
+                            <View style={styles.replyPreviewContent}>
+                                <View style={styles.replyPreviewBar} />
+                                <View style={styles.replyPreviewText}>
+                                    <Text style={styles.replyPreviewName}>
+                                        {replyingTo.from_user_id === user?.id ? 'Tú' : partner?.name || 'Pareja'}
+                                    </Text>
+                                    <Text style={styles.replyPreviewMessage} numberOfLines={1}>
+                                        {replyingTo.type === 'voice' ? '🎤 Nota de voz' :
+                                            replyingTo.type === 'image' ? '📷 Imagen' :
+                                                replyingTo.message}
+                                    </Text>
+                                </View>
+                            </View>
+                            <Pressable
+                                onPress={() => setReplyingTo(null)}
+                                style={styles.replyPreviewClose}
+                            >
+                                <Ionicons name="close" size={20} color="#6B7280" />
+                            </Pressable>
                         </View>
                     )}
 
-                    <View style={styles.inputWrapper}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Mensaje..."
-                            placeholderTextColor="#9CA3AF"
-                            value={newMessage}
-                            onChangeText={setNewMessage}
-                            multiline
-                            maxLength={200}
-                        />
+                    <View style={styles.inputContainer}>
+                        {partner && (
+                            <View style={styles.imageButtonWrapper}>
+                                <ImageAttachButton
+                                    toUserId={partner.id}
+                                    onSent={() => {
+                                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                        loadMessages();
+                                    }}
+                                    size={28}
+                                    color="#EB477E"
+                                />
+                            </View>
+                        )}
+
+                        <View style={styles.inputWrapper}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Mensaje..."
+                                placeholderTextColor="#9CA3AF"
+                                value={newMessage}
+                                onChangeText={setNewMessage}
+                                multiline
+                                maxLength={500}
+                            />
+                            {newMessage.length > 0 && (
+                                <Text style={styles.charCounter}>
+                                    {newMessage.length}/500
+                                </Text>
+                            )}
+                        </View>
+
+                        {/* Mostrar botón de voz cuando no hay texto, botón de enviar cuando hay texto */}
+                        {!newMessage.trim() && partner ? (
+                            <View style={styles.voiceButtonWrapper}>
+                                <VoiceRecorderButton
+                                    toUserId={partner.id}
+                                    onOptimisticSend={(tempId, duration) => {
+                                        // Crear mensaje optimista de voz
+                                        const optimisticVoiceMessage: Message = {
+                                            id: tempId,
+                                            message: '🎤 Nota de voz',
+                                            synced_emotion: 'happy',
+                                            created_at: new Date().toISOString(),
+                                            from_user_id: user!.id,
+                                            read: false,
+                                            type: 'voice',
+                                            voice_id: tempId,
+                                            voice_duration: duration,
+                                            voice_storage_path: '',
+                                            voice_listened: false,
+                                            voice_waveform: [],
+                                        };
+
+                                        // Agregar mensaje optimista a la UI
+                                        setMessages(prev => [...prev, optimisticVoiceMessage]);
+
+                                        // Activar scroll automático para este mensaje
+                                        shouldScrollToEnd.current = true;
+
+                                        // Scroll al final inmediatamente
+                                        setTimeout(() => {
+                                            scrollViewRef.current?.scrollToEnd({ animated: true });
+                                        }, 50);
+                                    }}
+                                    onSent={() => {
+                                        // Recargar mensajes cuando realmente se envíe
+                                        loadMessages();
+                                    }}
+                                    size={24}
+                                    color="#EB477E"
+                                />
+                            </View>
+                        ) : (
+                            <Pressable
+                                style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
+                                onPress={handleSendMessage}
+                                disabled={!newMessage.trim()}
+                            >
+                                <Ionicons name="send" size={24} color={newMessage.trim() ? "#EB477E" : "#D1D5DB"} />
+                            </Pressable>
+                        )}
                     </View>
-
-                    {/* Mostrar botón de voz cuando no hay texto, botón de enviar cuando hay texto */}
-                    {!newMessage.trim() && partner ? (
-                        <View style={styles.voiceButtonWrapper}>
-                            <VoiceRecorderButton
-                                toUserId={partner.id}
-                                onSent={() => {
-                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                                    loadMessages();
-                                }}
-                                size={24}
-                                color="#EB477E"
-                            />
-                        </View>
-                    ) : (
-                        <Pressable
-                            style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
-                            onPress={handleSendMessage}
-                            disabled={!newMessage.trim()}
-                        >
-                            <Ionicons name="send" size={24} color={newMessage.trim() ? "#EB477E" : "#D1D5DB"} />
-                        </Pressable>
-                    )}
                 </View>
 
                 {/* Modal para ver imagen privada */}
@@ -876,6 +1187,124 @@ export default function MessagesScreen() {
                             </>
                         )}
                     </View>
+                </Modal>
+
+                {/* Modal para ver foto ampliada de la pareja */}
+                <Modal
+                    visible={!!viewingPartnerPhoto}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setViewingPartnerPhoto(null)}
+                >
+                    <Pressable
+                        style={styles.photoViewerOverlay}
+                        onPress={() => setViewingPartnerPhoto(null)}
+                    >
+                        <View style={styles.photoViewerContent}>
+                            {viewingPartnerPhoto && (
+                                <Image
+                                    source={{ uri: viewingPartnerPhoto }}
+                                    style={styles.photoViewerImage}
+                                    resizeMode="contain"
+                                />
+                            )}
+                            <Pressable
+                                style={styles.photoViewerClose}
+                                onPress={() => setViewingPartnerPhoto(null)}
+                            >
+                                <Ionicons name="close" size={28} color="#FFF" />
+                            </Pressable>
+                        </View>
+                    </Pressable>
+                </Modal>
+
+                {/* Modal de perfil de pareja */}
+                <Modal
+                    visible={showPartnerProfile}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setShowPartnerProfile(false)}
+                >
+                    <Pressable
+                        style={styles.partnerProfileOverlay}
+                        onPress={() => setShowPartnerProfile(false)}
+                    >
+                        <Pressable
+                            style={styles.partnerProfileContent}
+                            onPress={(e) => e.stopPropagation()}
+                        >
+                            {/* Avatar grande */}
+                            {partner?.avatar_url && (
+                                <Pressable onPress={handleViewPartnerAvatar}>
+                                    <Image
+                                        source={{ uri: avatarService.getAvatarUrl(partner.avatar_url) || undefined }}
+                                        style={styles.partnerProfileAvatar}
+                                    />
+                                </Pressable>
+                            )}
+
+                            {/* Nombre */}
+                            <Text style={styles.partnerProfileName}>{partner?.name || 'Pareja'}</Text>
+
+                            {/* Última conexión */}
+                            <Text style={styles.partnerProfileLastSeen}>
+                                {partner?.last_seen ? formatLastSeen(partner.last_seen) : 'Sin conexión'}
+                            </Text>
+
+                            {/* Fotos públicas */}
+                            {partnerPhotos.length > 0 && (
+                                <>
+                                    <View style={styles.partnerPhotosHeader}>
+                                        <Ionicons name="images" size={20} color="#667eea" />
+                                        <Text style={styles.partnerPhotosTitle}>Fotos públicas</Text>
+                                    </View>
+
+                                    <View style={styles.partnerPhotosGrid}>
+                                        {partnerPhotos.map((photo) => {
+                                            const photoUrl = galleryService.getImageUrl(photo.image_path);
+                                            return (
+                                                <Pressable
+                                                    key={photo.id}
+                                                    onPress={() => handleViewPartnerPhoto(photoUrl)}
+                                                >
+                                                    <Image
+                                                        source={{ uri: galleryService.getImageUrl(photo.thumbnail_path || photo.image_path) }}
+                                                        style={styles.partnerPhotoItem}
+                                                    />
+                                                </Pressable>
+                                            );
+                                        })}
+                                    </View>
+
+                                    <Pressable
+                                        style={styles.viewAllPhotosButton}
+                                        onPress={() => {
+                                            setShowPartnerProfile(false);
+                                            router.push('/(app)/private-images');
+                                        }}
+                                    >
+                                        <Text style={styles.viewAllPhotosText}>Ver todas las fotos</Text>
+                                        <Ionicons name="arrow-forward" size={16} color="#667eea" />
+                                    </Pressable>
+                                </>
+                            )}
+
+                            {partnerPhotos.length === 0 && (
+                                <View style={styles.noPhotosContainer}>
+                                    <Ionicons name="images-outline" size={48} color="#CCC" />
+                                    <Text style={styles.noPhotosText}>No hay fotos públicas</Text>
+                                </View>
+                            )}
+
+                            {/* Botón cerrar */}
+                            <Pressable
+                                style={styles.closeProfileButton}
+                                onPress={() => setShowPartnerProfile(false)}
+                            >
+                                <Ionicons name="close" size={24} color="#FFF" />
+                            </Pressable>
+                        </Pressable>
+                    </Pressable>
                 </Modal>
 
                 {/* Modal para configurar fondo del chat */}
@@ -949,7 +1378,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 24,
+        paddingHorizontal: 20,
         paddingTop: 12,
         paddingBottom: 12,
         backgroundColor: '#FFF',
@@ -958,28 +1387,33 @@ const styles = StyleSheet.create({
     },
     backButton: {
         padding: 4,
-        marginLeft: -4,
+        marginLeft: 0,
     },
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 12,
+        minWidth: 80,
+        justifyContent: 'flex-end',
+        marginLeft: 16,
     },
     headerButton: {
         padding: 4,
     },
     searchButton: {
         padding: 4,
-        marginRight: -4,
+        marginRight: 0,
     },
     closeButton: {
         padding: 4,
-        marginRight: -4,
+        marginRight: 0,
     },
     headerCenter: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
+        flex: 1,
+        maxWidth: '60%',
     },
     headerAvatar: {
         width: 40,
@@ -990,11 +1424,13 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: '#181113',
+        maxWidth: 150,
     },
     headerSubtitle: {
         fontSize: 12,
         color: '#EB477E',
         fontWeight: '500',
+        maxWidth: 150,
     },
     searchInput: {
         flex: 1,
@@ -1037,6 +1473,22 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#6B7280',
     },
+    messageContainer: {
+        position: 'relative',
+        marginBottom: 16,
+    },
+    replyIconContainer: {
+        position: 'absolute',
+        top: '50%',
+        marginTop: -10,
+        zIndex: 0,
+    },
+    replyIconLeft: {
+        left: 10,
+    },
+    replyIconRight: {
+        right: 10,
+    },
     dateLabel: {
         alignItems: 'center',
         marginVertical: 16,
@@ -1044,14 +1496,24 @@ const styles = StyleSheet.create({
     dateLabelText: {
         fontSize: 11,
         fontWeight: '700',
-        color: '#9CA3AF',
+        color: '#1F2937',
         letterSpacing: 1,
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
     },
     messageRow: {
         flexDirection: 'row',
-        marginBottom: 16,
         alignItems: 'flex-end',
         gap: 8,
+        zIndex: 1,
     },
     messageRowMe: {
         flexDirection: 'row-reverse',
@@ -1107,6 +1569,19 @@ const styles = StyleSheet.create({
     messageBubbleVoice: {
         minWidth: 200,
     },
+    messageBubbleHighlighted: {
+        shadowColor: '#667eea',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    voiceSendingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        opacity: 0.7,
+    },
     imageStatus: {
         fontSize: 11,
         color: '#6B7280',
@@ -1120,23 +1595,109 @@ const styles = StyleSheet.create({
         color: '#EB477E',
         fontWeight: '600',
     },
+    inputContainerWrapper: {
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(244, 240, 242, 0.5)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    replyPreview: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    replyPreviewContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        gap: 8,
+    },
+    replyPreviewBar: {
+        width: 3,
+        height: 40,
+        backgroundColor: '#667eea',
+        borderRadius: 2,
+    },
+    replyPreviewText: {
+        flex: 1,
+    },
+    replyPreviewName: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#667eea',
+        marginBottom: 2,
+    },
+    replyPreviewMessage: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    replyPreviewClose: {
+        padding: 4,
+    },
+    quotedMessage: {
+        flexDirection: 'row',
+        marginBottom: 8,
+        borderRadius: 8,
+        padding: 8,
+        gap: 8,
+    },
+    quotedMessagePartner: {
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    },
+    quotedMessageMe: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    quotedMessageBar: {
+        width: 3,
+        borderRadius: 2,
+    },
+    quotedMessageBarPartner: {
+        backgroundColor: '#667eea',
+    },
+    quotedMessageBarMe: {
+        backgroundColor: '#FFF',
+    },
+    quotedMessageContent: {
+        flex: 1,
+    },
+    quotedMessageName: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    quotedMessageNamePartner: {
+        color: '#667eea',
+    },
+    quotedMessageNameMe: {
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
+    quotedMessageText: {
+        fontSize: 13,
+    },
+    quotedMessageTextPartner: {
+        color: '#6B7280',
+    },
+    quotedMessageTextMe: {
+        color: 'rgba(255, 255, 255, 0.7)',
+    },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingTop: 10,
         paddingBottom: 10,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(244, 240, 242, 0.5)',
         gap: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 5,
     },
     keyboardView: {
         width: '100%',
@@ -1157,6 +1718,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 6,
         minHeight: 40,
+        position: 'relative',
     },
     input: {
         flex: 1,
@@ -1164,6 +1726,15 @@ const styles = StyleSheet.create({
         color: '#181113',
         maxHeight: 80,
         paddingVertical: 8,
+        paddingRight: 50,
+    },
+    charCounter: {
+        position: 'absolute',
+        right: 14,
+        bottom: 8,
+        fontSize: 11,
+        color: '#9CA3AF',
+        fontWeight: '500',
     },
     sendButton: {
         width: 40,
@@ -1310,5 +1881,127 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#6B7280',
+    },
+    partnerProfileOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    partnerProfileContent: {
+        backgroundColor: '#FFF',
+        borderRadius: 24,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        alignItems: 'center',
+    },
+    partnerProfileAvatar: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        marginBottom: 16,
+        borderWidth: 3,
+        borderColor: '#667eea',
+    },
+    partnerProfileName: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    partnerProfileLastSeen: {
+        fontSize: 14,
+        color: '#EB477E',
+        fontWeight: '500',
+        marginBottom: 24,
+    },
+    partnerPhotosHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 16,
+        alignSelf: 'flex-start',
+    },
+    partnerPhotosTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    partnerPhotosGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 16,
+        justifyContent: 'center',
+    },
+    partnerPhotoItem: {
+        width: (width - 120) / 3,
+        height: (width - 120) / 3,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+    },
+    viewAllPhotosButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 12,
+        marginTop: 8,
+    },
+    viewAllPhotosText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#667eea',
+    },
+    noPhotosContainer: {
+        alignItems: 'center',
+        paddingVertical: 32,
+    },
+    noPhotosText: {
+        fontSize: 14,
+        color: '#9CA3AF',
+        marginTop: 12,
+    },
+    closeProfileButton: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#667eea',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    photoViewerOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.95)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    photoViewerContent: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    photoViewerImage: {
+        width: width,
+        height: height,
+    },
+    photoViewerClose: {
+        position: 'absolute',
+        top: 50,
+        right: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

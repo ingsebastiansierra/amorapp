@@ -267,13 +267,19 @@ class NotificationService {
         badge?: number;
     }): Promise<void> {
         try {
+            // Validar que el token no esté vacío
+            if (!notification.to || notification.to.trim() === '') {
+                console.error('❌ Token de notificación vacío o inválido');
+                return;
+            }
+
             const message = {
                 to: notification.to,
                 sound: notification.sound || 'default',
                 title: notification.title,
                 body: notification.body,
                 data: notification.data || {},
-                priority: notification.priority || 'default',
+                priority: notification.priority || 'high',
                 badge: notification.badge,
             };
 
@@ -287,15 +293,21 @@ class NotificationService {
                 body: JSON.stringify(message),
             });
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const result = await response.json();
             
             if (result.data?.status === 'error') {
                 console.error('❌ Error enviando notificación:', result.data.message);
+                throw new Error(result.data.message);
             } else {
                 console.log('✅ Notificación enviada:', notification.title);
             }
         } catch (error) {
             console.error('❌ Error enviando push notification:', error);
+            throw error; // Re-lanzar el error para que el llamador pueda manejarlo
         }
     }
 

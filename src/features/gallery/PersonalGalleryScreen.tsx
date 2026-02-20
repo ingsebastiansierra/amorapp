@@ -1,5 +1,5 @@
 // Pantalla de galería personal con control de visibilidad
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -21,6 +21,11 @@ import { galleryService } from '@/core/services/galleryService';
 import { PersonalGalleryImage } from '@/core/types/gallery';
 import { supabase } from '@/core/config/supabase';
 import * as Haptics from 'expo-haptics';
+import { useSmartInterstitialAd } from '@/shared/hooks/useSmartInterstitialAd';
+import { SmartGalleryAd } from '@/shared/components/SmartGalleryAd';
+import { InterstitialFallbackModal } from '@/shared/components/InterstitialFallbackModal';
+import { useRateLimit } from '@/shared/hooks/useRateLimit';
+import { sanitizeCaption } from '@/shared/utils/sanitize';
 
 const { width } = Dimensions.get('window');
 const ITEM_SIZE = (width - 48) / 2; // 2 columnas con padding
@@ -51,6 +56,16 @@ export function PersonalGalleryScreen() {
     // Modo de selección
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
+
+    // Anuncio intersticial
+    const { showAd, isLoaded, showFallbackModal, closeFallback } = useSmartInterstitialAd();
+
+    // Rate limiting para subida de imágenes
+    const { checkLimit: checkUploadLimit } = useRateLimit({
+        maxAttempts: 10,
+        windowMs: 3600000, // 1 hora
+        message: 'Has subido muchas fotos. Espera un momento.'
+    });
 
     useEffect(() => {
         loadData();
@@ -126,6 +141,13 @@ export function PersonalGalleryScreen() {
 
     const handleUploadPress = async () => {
         try {
+            // Mostrar anuncio intersticial antes de abrir el selector de imagen
+            if (isLoaded) {
+                await showAd();
+                // Esperar un momento para que el anuncio se cierre
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
             const imageUri = await galleryService.pickImage();
             if (imageUri) {
                 setSelectedImage(imageUri);
@@ -139,10 +161,18 @@ export function PersonalGalleryScreen() {
     const handleConfirmUpload = async () => {
         if (!user || !selectedImage) return;
 
+        // Verificar rate limit
+        if (!checkUploadLimit()) {
+            return;
+        }
+
         setUploading(true);
         try {
+            // Sanitizar caption
+            const cleanCaption = caption.trim() ? sanitizeCaption(caption) : undefined;
+
             await galleryService.uploadPhoto(user.id, selectedImage, {
-                caption: caption.trim() || undefined,
+                caption: cleanCaption,
                 visibility,
             });
 
@@ -259,82 +289,127 @@ export function PersonalGalleryScreen() {
         }
     };
 
-    const renderPhotoItem = ({ item }: { item: PersonalGalleryImage }) => {
-        const imageUrl = galleryService.getImageUrl(item.thumbnail_path || item.image_path);
-        const isMyPhoto = activeTab === 'my-photos';
-        const isSelected = selectedPhotos.has(item.id);
+    const renderPhotoItem = ({ item }: { item: { type: 'row' | 'ad'; id: string; photos?: PersonalGalleryImage[] } }) => {
+        // Si es un anuncio, renderizar Native Ad ocupando todo el ancho
+        if (item.type === 'ad') {
+            return (
+                <View style={styles.adFullWidth}>
+                    <SmartGalleryAd />
+                </View>
+            );
+        }
 
+        // Si es una fila de fotos, renderizar las 2 fotos lado a lado
         return (
-            <Pressable
-                style={[
-                    styles.photoItem,
-                    isSelected && styles.photoItemSelected,
-                ]}
-                onPress={() => handlePhotoPress(item)}
-            >
-                <Image source={{ uri: imageUrl }} style={styles.photoImage} />
+            <View style={styles.photoRow}>
+                {item.photos?.map((photo) => {
+                    const imageUrl = galleryService.getImageUrl(photo.thumbnail_path || photo.image_path);
+                    const isMyPhoto = activeTab === 'my-photos';
+                    const isSelected = selectedPhotos.has(photo.id);
 
-                {/* Overlay de selección */}
-                {isSelected && (
-                    <View style={styles.selectionOverlay}>
-                        <View style={styles.checkmark}>
-                            <Ionicons name="checkmark" size={20} color="#FFF" />
-                        </View>
-                    </View>
-                )}
-
-                {/* Indicador de selección en modo selección */}
-                {selectionMode && isMyPhoto && !isSelected && (
-                    <View style={styles.selectionIndicator}>
-                        <View style={styles.emptyCheckmark} />
-                    </View>
-                )}
-
-                {/* Badge de visibilidad */}
-                <View style={styles.photoBadge}>
-                    {isMyPhoto ? (
+                    return (
                         <Pressable
+                            key={photo.id}
                             style={[
-                                styles.visibilityBadge,
-                                item.visibility === 'visible' ? styles.visibleBadge : styles.privateBadge,
+                                styles.photoItem,
+                                isSelected && styles.photoItemSelected,
                             ]}
-                            onPress={() => handleToggleVisibility(item)}
+                            onPress={() => handlePhotoPress(photo)}
+                            onLongPress={() => handleLongPress(photo)}
                         >
-                            {item.visibility === 'visible' ? (
-                                <Ionicons name="heart" size={16} color="#FFF" />
-                            ) : (
-                                <Ionicons name="lock-closed" size={16} color="#FFF" />
+                            <Image source={{ uri: imageUrl }} style={styles.photoImage} />
+
+                            {/* Overlay de selección */}
+                            {isSelected && (
+                                <View style={styles.selectionOverlay}>
+                                    <View style={styles.checkmark}>
+                                        <Ionicons name="checkmark" size={20} color="#FFF" />
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Indicador de selección en modo selección */}
+                            {selectionMode && isMyPhoto && !isSelected && (
+                                <View style={styles.selectionIndicator}>
+                                    <View style={styles.emptyCheckmark} />
+                                </View>
+                            )}
+
+                            {/* Badge de visibilidad */}
+                            <View style={styles.photoBadge}>
+                                {isMyPhoto ? (
+                                    <Pressable
+                                        style={[
+                                            styles.visibilityBadge,
+                                            photo.visibility === 'visible' ? styles.visibleBadge : styles.privateBadge,
+                                        ]}
+                                        onPress={() => handleToggleVisibility(photo)}
+                                    >
+                                        {photo.visibility === 'visible' ? (
+                                            <Ionicons name="heart" size={16} color="#FFF" />
+                                        ) : (
+                                            <Ionicons name="lock-closed" size={16} color="#FFF" />
+                                        )}
+                                    </Pressable>
+                                ) : null}
+                            </View>
+
+                            {/* Label de estado */}
+                            <View style={styles.photoLabel}>
+                                <Text style={styles.photoLabelText}>
+                                    {isMyPhoto
+                                        ? photo.visibility === 'visible'
+                                            ? 'VISIBLE'
+                                            : 'SOLO YO'
+                                        : 'VISIBLE'}
+                                </Text>
+                            </View>
+
+                            {/* Botón de eliminar (solo en mis fotos) */}
+                            {isMyPhoto && (
+                                <Pressable
+                                    style={styles.deleteButton}
+                                    onPress={() => handleDeletePhoto(photo)}
+                                >
+                                    <Ionicons name="trash" size={16} color="#FFF" />
+                                </Pressable>
                             )}
                         </Pressable>
-                    ) : null}
-                </View>
-
-                {/* Label de estado */}
-                <View style={styles.photoLabel}>
-                    <Text style={styles.photoLabelText}>
-                        {isMyPhoto
-                            ? item.visibility === 'visible'
-                                ? 'VISIBLE'
-                                : 'SOLO YO'
-                            : 'VISIBLE'}
-                    </Text>
-                </View>
-
-                {/* Botón de eliminar (solo en mis fotos) */}
-                {isMyPhoto && (
-                    <Pressable
-                        style={styles.deleteButton}
-                        onPress={() => handleDeletePhoto(item)}
-                    >
-                        <Ionicons name="trash" size={16} color="#FFF" />
-                    </Pressable>
-                )}
-            </Pressable>
+                    );
+                })}
+            </View>
         );
     };
 
     const currentPhotos = activeTab === 'my-photos' ? myPhotos : partnerPhotos;
     const photoCount = currentPhotos.length;
+
+    // Agrupar fotos en filas de 2 + insertar anuncios
+    const photosWithAds = useMemo(() => {
+        if (currentPhotos.length === 0) return [];
+
+        const result: Array<{ type: 'row' | 'ad'; id: string; photos?: PersonalGalleryImage[] }> = [];
+
+        for (let i = 0; i < currentPhotos.length; i += 2) {
+            // Agregar fila de 2 fotos
+            const rowPhotos = currentPhotos.slice(i, i + 2);
+            result.push({
+                type: 'row',
+                id: `row-${i}`,
+                photos: rowPhotos
+            });
+
+            // Insertar anuncio cada 3 filas (6 fotos)
+            if ((i + 2) % 6 === 0 && i < currentPhotos.length - 2) {
+                result.push({
+                    type: 'ad',
+                    id: `ad-${i}`
+                });
+            }
+        }
+
+        return result;
+    }, [currentPhotos]);
 
     return (
         <View style={styles.container}>
@@ -439,12 +514,10 @@ export function PersonalGalleryScreen() {
                 </View>
             ) : (
                 <FlatList
-                    data={currentPhotos}
+                    data={photosWithAds}
                     renderItem={renderPhotoItem}
                     keyExtractor={(item) => item.id}
-                    numColumns={2}
                     contentContainerStyle={styles.gridContent}
-                    columnWrapperStyle={styles.gridRow}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="images-outline" size={64} color="#CCC" />
@@ -647,6 +720,12 @@ export function PersonalGalleryScreen() {
                     </Pressable>
                 </Pressable>
             </Modal>
+
+            {/* Fallback Modal para anuncios intersticiales */}
+            <InterstitialFallbackModal
+                visible={showFallbackModal}
+                onClose={closeFallback}
+            />
         </View>
     );
 }
@@ -759,6 +838,16 @@ const styles = StyleSheet.create({
     gridContent: {
         paddingHorizontal: 16,
         paddingBottom: 100,
+    },
+    photoRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+        paddingHorizontal: 16,
+    },
+    adFullWidth: {
+        width: '100%',
+        marginBottom: 16,
     },
     gridRow: {
         justifyContent: 'space-between',

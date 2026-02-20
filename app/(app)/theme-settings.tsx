@@ -7,7 +7,7 @@ import { useThemeStore } from '@/core/store/useThemeStore';
 import { useChatBackgroundStore, MessageColorTheme, EmojiStyle } from '@/core/store/useChatBackgroundStore';
 import { THEMES, FREE_THEMES, PREMIUM_THEMES } from '@/core/config/themes';
 import { ThemeType } from '@/core/types/theme';
-import { useRewardedAd } from '@/shared/hooks/useRewardedAd';
+import { useSmartRewardedAd } from '@/shared/hooks/useSmartRewardedAd';
 import * as Haptics from 'expo-haptics';
 
 const COLOR_THEMES = [
@@ -123,7 +123,7 @@ export default function ThemeSettingsScreen() {
         }
     }, [selectedPremiumTheme, unlockThemeTemporarily, setTheme]);
 
-    const { showAd, isLoaded, isLoading } = useRewardedAd(handleAdReward);
+    const { showAd, isLoaded, isLoading } = useSmartRewardedAd(handleAdReward);
 
     const handleThemeSelect = async (themeId: ThemeType) => {
         const theme = THEMES[themeId];

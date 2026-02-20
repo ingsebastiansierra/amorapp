@@ -20,6 +20,12 @@ import { useRelationshipTracking } from '@/shared/hooks/useRelationshipTracking'
 import { useNotifications } from '@/shared/hooks/useNotifications';
 import { notificationService } from '@/core/services/notificationService';
 import { useTheme } from '@/shared/hooks/useTheme';
+import { SmartBannerAd } from '@/shared/components/SmartBannerAd';
+import { eventsService } from '@/core/services/eventsService';
+import { CoupleEvent, EVENT_TYPES } from '@/core/types/events';
+import { useRateLimit } from '@/shared/hooks/useRateLimit';
+import { sanitizeMessage } from '@/shared/utils/sanitize';
+import { Alert } from 'react-native';
 
 interface PartnerInfo {
     id: string;
@@ -48,12 +54,26 @@ export default function HomeScreen() {
     const [messagesSentForEmotion, setMessagesSentForEmotion] = useState(0);
     const [emotionBlocked, setEmotionBlocked] = useState(false);
     const [coupleId, setCoupleId] = useState<string | null>(null);
+    const [nextEvent, setNextEvent] = useState<CoupleEvent | null>(null);
 
     // Hook de tracking de relación
     const { syncStats, recordSync, endSync } = useRelationshipTracking(coupleId);
 
     // Hook de notificaciones
     useNotifications();
+
+    // Hooks de rate limiting
+    const { checkLimit: checkMessageLimit } = useRateLimit({
+        maxAttempts: 5,
+        windowMs: 60000, // 1 minuto
+        message: 'Espera un momento antes de enviar otro mensaje'
+    });
+
+    const { checkLimit: checkStateLimit } = useRateLimit({
+        maxAttempts: 10,
+        windowMs: 60000, // 1 minuto
+        message: 'Espera un momento antes de cambiar tu estado otra vez'
+    });
 
     // Referencias para tracking de estados previos
     const prevMyState = useRef<EmotionalState | null>(null);
@@ -85,11 +105,21 @@ export default function HomeScreen() {
         };
     }, []);
 
+    // Cargar próximo evento cuando se obtiene el coupleId
+    useEffect(() => {
+        if (coupleId) {
+            loadNextEvent();
+        }
+    }, [coupleId]);
+
     // Recargar perfil cuando la pantalla recibe focus (vuelves de otra pantalla)
     useFocusEffect(
         React.useCallback(() => {
             loadMyProfile();
-        }, [])
+            if (coupleId) {
+                loadNextEvent();
+            }
+        }, [coupleId])
     );
 
     // Animar cuando cambia mi estado emocional
@@ -574,6 +604,22 @@ export default function HomeScreen() {
         }
     };
 
+    const loadNextEvent = async () => {
+        if (!coupleId) return;
+
+        try {
+            const upcomingEvents = await eventsService.getUpcomingEvents(coupleId, 1);
+            if (upcomingEvents.length > 0) {
+                setNextEvent(upcomingEvents[0]);
+            } else {
+                setNextEvent(null);
+            }
+        } catch (error) {
+            console.error('Error loading next event:', error);
+            setNextEvent(null);
+        }
+    };
+
     const handleHeartPress = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -601,6 +647,11 @@ export default function HomeScreen() {
     };
 
     const handleStateSelect = async (state: EmotionalState) => {
+        // Verificar rate limit
+        if (!checkStateLimit()) {
+            return;
+        }
+
         await setMyState(state, 1);
         setShowStateSelector(false);
 
@@ -620,7 +671,16 @@ export default function HomeScreen() {
     };
 
     const handleSendSyncMessage = async () => {
-        if (!syncMessage.trim() || !partner || !user || !myState) {
+        // Verificar rate limit
+        if (!checkMessageLimit()) {
+            return;
+        }
+
+        // Sanitizar mensaje
+        const cleanMessage = sanitizeMessage(syncMessage);
+
+        if (!cleanMessage || !partner || !user || !myState) {
+            Alert.alert('Error', 'El mensaje no puede estar vacío');
             return;
         }
 
@@ -648,7 +708,7 @@ export default function HomeScreen() {
                     couple_id: userData.couple_id,
                     from_user_id: user.id,
                     to_user_id: partner.id,
-                    message: syncMessage.trim(),
+                    message: cleanMessage,
                     synced_emotion: myState,
                 })
                 .select();
@@ -663,7 +723,7 @@ export default function HomeScreen() {
                 await notificationService.sendMessageNotification(
                     partner.push_token,
                     myProfile.name,
-                    syncMessage.trim(),
+                    cleanMessage,
                     myState
                 );
             }
@@ -704,7 +764,33 @@ export default function HomeScreen() {
                             </View>
                         )}
                     </Pressable>
-                    <Text style={styles.headerTitle}>Palpitos</Text>
+
+                    {/* Título y estadísticas en el centro */}
+                    <View style={styles.headerCenter}>
+                        <Text style={styles.headerTitle}>Palpitos</Text>
+                        {syncStats && (
+                            <View style={styles.headerStats}>
+                                <View style={styles.headerStatItem}>
+                                    <Text style={styles.headerStatIcon}>❤️</Text>
+                                    <Text style={[styles.headerStatValue, { color: colors.primary }]}>
+                                        {syncStats.days_together}d
+                                    </Text>
+                                </View>
+                                {syncStats.current_streak > 0 && (
+                                    <>
+                                        <Text style={styles.headerStatDivider}>•</Text>
+                                        <View style={styles.headerStatItem}>
+                                            <Text style={styles.headerStatIcon}>🔥</Text>
+                                            <Text style={[styles.headerStatValue, { color: colors.primary }]}>
+                                                {syncStats.current_streak}d
+                                            </Text>
+                                        </View>
+                                    </>
+                                )}
+                            </View>
+                        )}
+                    </View>
+
                     <Pressable onPress={openMessageNotification} style={{ position: 'relative' }}>
                         <Ionicons name="notifications" size={26} color="#181113" />
                         {unreadCount > 0 && (
@@ -714,28 +800,6 @@ export default function HomeScreen() {
                         )}
                     </Pressable>
                 </View>
-
-                {/* Contadores de Relación */}
-                {syncStats && (
-                    <View style={styles.relationshipStats}>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statIcon}>❤️</Text>
-                            <Text style={[styles.statValue, { color: colors.primary }]}>
-                                {syncStats.days_together}
-                            </Text>
-                            <Text style={styles.statLabel}>días juntos</Text>
-                        </View>
-                        {syncStats.current_streak > 0 && (
-                            <View style={styles.statItem}>
-                                <Text style={styles.statIcon}>🔥</Text>
-                                <Text style={[styles.statValue, { color: colors.primary }]}>
-                                    {syncStats.current_streak}
-                                </Text>
-                                <Text style={styles.statLabel}>días sincronizados</Text>
-                            </View>
-                        )}
-                    </View>
-                )}
 
                 <ScrollView
                     style={styles.scrollView}
@@ -860,17 +924,49 @@ export default function HomeScreen() {
                     </Pressable>
 
                     {/* Upcoming Date Card */}
-                    <Pressable style={styles.upcomingCard}>
-                        <View style={styles.upcomingLeft}>
-                            <View style={[styles.upcomingIconBox, { backgroundColor: colors.primary + '20' }]}>
-                                <Ionicons name="calendar-outline" size={22} color={colors.primary} />
-                            </View>
-                            <View>
-                                <Text style={styles.upcomingTitle}>Próxima Cita</Text>
-                                <Text style={styles.upcomingSubtitle}>Viernes, 7:00 PM • Noche de Sushi</Text>
-                            </View>
-                        </View>
-                        <Ionicons name="chevron-forward" size={22} color="#D1D5DB" />
+                    <Pressable
+                        style={styles.upcomingCard}
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            router.push('/(app)/calendar');
+                        }}
+                    >
+                        {nextEvent ? (
+                            <>
+                                <View style={styles.upcomingLeft}>
+                                    <View style={[styles.upcomingIconBox, { backgroundColor: EVENT_TYPES[nextEvent.event_type].color + '20' }]}>
+                                        <Text style={styles.upcomingEmoji}>{EVENT_TYPES[nextEvent.event_type].emoji}</Text>
+                                    </View>
+                                    <View>
+                                        <Text style={styles.upcomingTitle}>{nextEvent.title}</Text>
+                                        <Text style={styles.upcomingSubtitle}>
+                                            {new Date(nextEvent.event_date).toLocaleDateString('es-ES', {
+                                                weekday: 'long',
+                                                day: 'numeric',
+                                                month: 'long',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                            {nextEvent.location && ` • ${nextEvent.location}`}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Ionicons name="chevron-forward" size={22} color="#D1D5DB" />
+                            </>
+                        ) : (
+                            <>
+                                <View style={styles.upcomingLeft}>
+                                    <View style={[styles.upcomingIconBox, { backgroundColor: colors.primary + '20' }]}>
+                                        <Ionicons name="calendar-outline" size={22} color={colors.primary} />
+                                    </View>
+                                    <View>
+                                        <Text style={styles.upcomingTitle}>Sin eventos próximos</Text>
+                                        <Text style={styles.upcomingSubtitle}>Toca para crear tu primer momento especial</Text>
+                                    </View>
+                                </View>
+                                <Ionicons name="chevron-forward" size={22} color="#D1D5DB" />
+                            </>
+                        )}
                     </Pressable>
                 </ScrollView>
 
@@ -926,7 +1022,7 @@ export default function HomeScreen() {
 
                                 <View style={styles.syncInputContainer}>
                                     <Text style={styles.syncInputLabel}>
-                                        Mensaje ({syncMessage.length}/50)
+                                        Mensaje ({syncMessage.length}/500)
                                     </Text>
                                     <TextInput
                                         style={styles.syncInput}
@@ -934,11 +1030,11 @@ export default function HomeScreen() {
                                         placeholderTextColor="#999"
                                         value={syncMessage}
                                         onChangeText={(text) => {
-                                            if (text.length <= 50) {
+                                            if (text.length <= 500) {
                                                 setSyncMessage(text);
                                             }
                                         }}
-                                        maxLength={50}
+                                        maxLength={500}
                                         multiline
                                         numberOfLines={3}
                                         autoFocus
@@ -1122,6 +1218,9 @@ export default function HomeScreen() {
                     </Pressable>
                 </Modal>
 
+                {/* Banner Ad en la parte inferior */}
+                <SmartBannerAd />
+
             </SafeAreaView>
         </View>
     );
@@ -1141,8 +1240,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 24,
-        paddingTop: 48,
-        paddingBottom: 16,
+        paddingTop: 12,
+        paddingBottom: 12,
         backgroundColor: '#FFF',
     },
     headerAvatar: {
@@ -1166,6 +1265,35 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         letterSpacing: 2,
         color: '#181113',
+        marginBottom: 2,
+    },
+    headerCenter: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerStats: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 2,
+    },
+    headerStatItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+    },
+    headerStatIcon: {
+        fontSize: 12,
+    },
+    headerStatValue: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    headerStatDivider: {
+        fontSize: 10,
+        color: '#D1D5DB',
+        marginHorizontal: 4,
     },
     badge: {
         position: 'absolute',
@@ -1181,35 +1309,6 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 10,
         fontWeight: 'bold',
-    },
-    // Relationship Stats
-    relationshipStats: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        backgroundColor: '#FFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-        gap: 24,
-    },
-    statItem: {
-        alignItems: 'center',
-    },
-    statIcon: {
-        fontSize: 20,
-        marginBottom: 4,
-    },
-    statValue: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    statLabel: {
-        fontSize: 10,
-        color: '#6B7280',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
     },
     // Content
     scrollView: {
@@ -1387,6 +1486,9 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    upcomingEmoji: {
+        fontSize: 20,
     },
     upcomingIcon: {
         fontSize: 20,

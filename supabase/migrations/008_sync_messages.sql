@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS public.sync_messages (
     couple_id UUID NOT NULL REFERENCES public.couples(id) ON DELETE CASCADE,
     from_user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     to_user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    message TEXT NOT NULL CHECK (char_length(message) <= 50),
+    message TEXT NOT NULL CHECK (char_length(message) <= 500),
     synced_emotion TEXT NOT NULL,
     read BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT now()

@@ -9,6 +9,8 @@ import { supabase } from '@/core/config/supabase';
 import { eventsService } from '@/core/services/eventsService';
 import { CoupleEvent, EventType, EVENT_TYPES, CreateEventData } from '@/core/types/events';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { useRateLimit } from '@/shared/hooks/useRateLimit';
+import { sanitizeText, sanitizeLocation } from '@/shared/utils/sanitize';
 
 export default function CalendarScreen() {
     const { user } = useAuthStore();
@@ -27,6 +29,13 @@ export default function CalendarScreen() {
     const [description, setDescription] = useState('');
     const [eventType, setEventType] = useState<EventType>('date');
     const [location, setLocation] = useState('');
+
+    // Rate limiting para creación de eventos
+    const { checkLimit: checkEventLimit } = useRateLimit({
+        maxAttempts: 10,
+        windowMs: 3600000, // 1 hora
+        message: 'Has creado muchos eventos. Espera un momento.'
+    });
 
     useEffect(() => {
         loadCoupleId();
@@ -70,18 +79,28 @@ export default function CalendarScreen() {
     };
 
     const handleCreateEvent = async () => {
-        if (!title.trim() || !coupleId || !user) {
+        // Sanitizar inputs
+        const cleanTitle = sanitizeText(title, 100);
+        const cleanDescription = description.trim() ? sanitizeText(description, 500) : undefined;
+        const cleanLocation = location.trim() ? sanitizeLocation(location) : undefined;
+
+        if (!cleanTitle || !coupleId || !user) {
             Alert.alert('Error', 'Por favor completa el título del evento');
+            return;
+        }
+
+        // Verificar rate limit solo para nuevos eventos
+        if (!editingEvent && !checkEventLimit()) {
             return;
         }
 
         try {
             const eventData: CreateEventData = {
-                title: title.trim(),
-                description: description.trim() || undefined,
+                title: cleanTitle,
+                description: cleanDescription,
                 event_date: selectedDate.toISOString(),
                 event_type: eventType,
-                location: location.trim() || undefined,
+                location: cleanLocation,
                 reminder_enabled: true,
             };
 

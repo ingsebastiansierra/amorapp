@@ -91,9 +91,16 @@ class VoiceService {
   async cancelRecording() {
     if (this.recording) {
       try {
+        // Intentar detener normalmente
         await this.recording.stopAndUnloadAsync();
-      } catch (error) {
-        console.error('Error canceling recording:', error);
+      } catch (error: any) {
+        // Si falla por falta de datos, intentar solo descargar
+        try {
+          await this.recording.unloadAsync();
+        } catch (unloadError) {
+          // Ignorar errores de descarga
+          console.log('No se pudo descargar la grabación, probablemente ya estaba limpia');
+        }
       } finally {
         this.recording = null;
       }

@@ -9,11 +9,12 @@ import * as Haptics from 'expo-haptics';
 interface Props {
     toUserId: string;
     onSent?: () => void;
+    onOptimisticSend?: (tempId: string, duration: number) => void;
     size?: number;
     color?: string;
 }
 
-export function VoiceRecorderButton({ toUserId, onSent, size = 28, color = '#007AFF' }: Props) {
+export function VoiceRecorderButton({ toUserId, onSent, onOptimisticSend, size = 28, color = '#007AFF' }: Props) {
     const [isRecording, setIsRecording] = useState(false);
     const [duration, setDuration] = useState(0);
     const { sendVoiceNote } = useVoiceNotes();
@@ -22,6 +23,7 @@ export function VoiceRecorderButton({ toUserId, onSent, size = 28, color = '#007
     const durationRef = useRef(0);
     const isRecordingRef = useRef(false);
     const isCancelled = useRef(false);
+    const recordingStartTime = useRef<number>(0);
 
     // Limpiar al desmontar
     useEffect(() => {
@@ -99,18 +101,44 @@ export function VoiceRecorderButton({ toUserId, onSent, size = 28, color = '#007
             }
 
             await voiceService.startRecording();
+            recordingStartTime.current = Date.now();
             setIsRecording(true);
             isRecordingRef.current = true;
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error starting recording:', error);
-            Alert.alert('Error', 'No se pudo iniciar la grabación');
+            // Solo mostrar alerta si no es un error de permisos
+            if (!error.message?.includes('permission')) {
+                Alert.alert('Error', 'No se pudo iniciar la grabación');
+            }
             setIsRecording(false);
             isRecordingRef.current = false;
         }
     };
 
     const handleStopRecording = async () => {
+        // Verificar que realmente está grabando
+        if (!isRecordingRef.current) {
+            return;
+        }
+
+        // Verificar tiempo mínimo de grabación (500ms para capturar audio válido)
+        const recordingTime = Date.now() - recordingStartTime.current;
+        if (recordingTime < 500) {
+            // Cancelar si es muy corto (sin mostrar error)
+            setIsRecording(false);
+            isRecordingRef.current = false;
+
+            // Intentar cancelar silenciosamente
+            try {
+                await voiceService.cancelRecording();
+            } catch (e) {
+                // Ignorar errores
+            }
+
+            return;
+        }
+
         // Si fue cancelado por deslizar, no enviar
         if (isCancelled.current) {
             await handleCancelRecording();
@@ -125,33 +153,53 @@ export function VoiceRecorderButton({ toUserId, onSent, size = 28, color = '#007
             isRecordingRef.current = false;
 
             if (actualDuration < 1) {
-                Alert.alert('Muy corto', 'La nota debe durar al menos 1 segundo');
                 return;
             }
 
-            // Enviar sin waveform
-            await sendVoiceNote(toUserId, uri, actualDuration);
+            // Crear ID temporal para mensaje optimista
+            const tempId = `temp-voice-${Date.now()}`;
 
+            // Llamar callback optimista INMEDIATAMENTE
+            if (onOptimisticSend) {
+                onOptimisticSend(tempId, actualDuration);
+            }
+
+            // Feedback inmediato
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            onSent?.();
-        } catch (error) {
+
+            // Enviar en segundo plano (sin esperar)
+            sendVoiceNote(toUserId, uri, actualDuration)
+                .then(() => {
+                    // Llamar onSent cuando realmente se envíe
+                    onSent?.();
+                })
+                .catch((error) => {
+                    console.error('Error sending voice note:', error);
+                    // Aquí podrías implementar lógica para remover el mensaje optimista si falla
+                });
+
+        } catch (error: any) {
             console.error('Error stopping recording:', error);
-            Alert.alert('Error', 'No se pudo enviar la nota de voz');
             setIsRecording(false);
             isRecordingRef.current = false;
         }
     };
 
     const handleCancelRecording = async () => {
+        // Verificar que realmente está grabando
+        if (!isRecordingRef.current) {
+            return;
+        }
+
         try {
             await voiceService.cancelRecording();
+        } catch (error) {
+            // Ignorar errores de cancelación
+            console.log('Error al cancelar (ignorado):', error);
+        } finally {
             setIsRecording(false);
             isRecordingRef.current = false;
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        } catch (error) {
-            console.error('Error canceling recording:', error);
-            setIsRecording(false);
-            isRecordingRef.current = false;
         }
     };
 
@@ -210,7 +258,7 @@ export function VoiceRecorderButton({ toUserId, onSent, size = 28, color = '#007
             onPressOut={handleStopRecording}
             style={[styles.button, { width: size + 8, height: size + 8 }]}
         >
-            <Text style={[styles.icon, { fontSize: size, color }]}>🎤</Text>
+            <Ionicons name="mic" size={size} color={color} />
         </Pressable>
     );
 }
@@ -220,9 +268,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 20,
-    },
-    icon: {
-        fontSize: 28,
     },
     recordingWrapper: {
         position: 'absolute',
