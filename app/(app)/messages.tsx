@@ -751,7 +751,10 @@ export default function MessagesScreen() {
         // Buscar el mensaje en la lista
         const messageIndex = messages.findIndex(m => m.id === messageId);
 
-        if (messageIndex === -1) return;
+        if (messageIndex === -1) {
+            Alert.alert('Mensaje no encontrado', 'El mensaje citado ya no está disponible.');
+            return;
+        }
 
         // Hacer scroll al mensaje
         const messageRef = messageRefs.current[messageId];
@@ -759,21 +762,28 @@ export default function MessagesScreen() {
             messageRef.measureLayout(
                 scrollViewRef.current,
                 (x: number, y: number) => {
-                    scrollViewRef.current?.scrollTo({ y: y - 100, animated: true });
+                    // Scroll con un poco más de espacio arriba para mejor visibilidad
+                    scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 150), animated: true });
 
                     // Resaltar el mensaje temporalmente
                     setHighlightedMessageId(messageId);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-                    // Quitar el resaltado después de 2 segundos
+                    // Feedback háptico más notorio
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+                    // Quitar el resaltado después de 3 segundos (aumentado de 2)
                     setTimeout(() => {
                         setHighlightedMessageId(null);
-                    }, 2000);
+                    }, 3000);
                 },
                 () => {
-                    // Error en measureLayout, ignorar
+                    // Error en measureLayout - intentar scroll básico
+                    console.log('Error en measureLayout, intentando scroll básico');
+                    Alert.alert('Error', 'No se pudo navegar al mensaje citado.');
                 }
             );
+        } else {
+            Alert.alert('Error', 'No se pudo encontrar el mensaje en la pantalla.');
         }
     };
 
@@ -1570,11 +1580,14 @@ const styles = StyleSheet.create({
         minWidth: 200,
     },
     messageBubbleHighlighted: {
+        borderWidth: 3,
+        borderColor: '#667eea',
         shadowColor: '#667eea',
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 8,
-        elevation: 8,
+        shadowOpacity: 0.8,
+        shadowRadius: 12,
+        elevation: 12,
+        transform: [{ scale: 1.02 }],
     },
     voiceSendingContainer: {
         flexDirection: 'row',

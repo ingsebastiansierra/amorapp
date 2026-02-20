@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Modal, Animated, TextInput, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal, Animated, TextInput, KeyboardAvoidingView, Platform, ScrollView, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -20,12 +20,10 @@ import { useRelationshipTracking } from '@/shared/hooks/useRelationshipTracking'
 import { useNotifications } from '@/shared/hooks/useNotifications';
 import { notificationService } from '@/core/services/notificationService';
 import { useTheme } from '@/shared/hooks/useTheme';
-import { SmartBannerAd } from '@/shared/components/SmartBannerAd';
 import { eventsService } from '@/core/services/eventsService';
 import { CoupleEvent, EVENT_TYPES } from '@/core/types/events';
 import { useRateLimit } from '@/shared/hooks/useRateLimit';
 import { sanitizeMessage } from '@/shared/utils/sanitize';
-import { Alert } from 'react-native';
 
 interface PartnerInfo {
     id: string;
@@ -1217,9 +1215,6 @@ export default function HomeScreen() {
                         </Pressable>
                     </Pressable>
                 </Modal>
-
-                {/* Banner Ad en la parte inferior */}
-                <SmartBannerAd />
 
             </SafeAreaView>
         </View>

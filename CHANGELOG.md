@@ -2,6 +2,18 @@
 
 Registro de cambios importantes del proyecto Palpitos.
 
+## [2026-02-20] - Mejora de UX en Mensajes Citados
+
+### 🎨 Mejorado
+- **Resaltado de mensajes citados:** Ahora cuando haces click en un mensaje citado:
+  - Se hace scroll automático al mensaje original
+  - El mensaje se resalta con un borde azul brillante (#667eea)
+  - Efecto de escala sutil (1.02x) para mejor visibilidad
+  - Sombra más pronunciada durante el resaltado
+  - Feedback háptico medio para confirmar la acción
+  - Duración del resaltado aumentada a 3 segundos
+  - Mejor manejo de errores con alertas informativas
+
 ## [2026-02-20] - Corrección de Mensajería y Limpieza
 
 ### ✅ Agregado
