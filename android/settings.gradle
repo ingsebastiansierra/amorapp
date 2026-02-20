@@ -31,7 +31,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'Palpitos'
+rootProject.name = 'MoodPareja – Chat, ligar & Sentimientos'
 
 expoAutolinking.useExpoVersionCatalog()
 

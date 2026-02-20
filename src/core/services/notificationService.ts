@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { supabase } from '@/core/config/supabase';
 import { EmotionalState, EMOTIONAL_STATES } from '@/core/types/emotions';
+import { firebaseService } from './firebaseService';
 
 // Verificar si estamos en Expo Go
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -49,6 +50,9 @@ class NotificationService {
      */
     async initialize(userId: string): Promise<string | null> {
         try {
+            // Inicializar Firebase primero (para FCM)
+            await firebaseService.initialize();
+
             // Si es Expo Go, no intentar obtener push token
             if (isExpoGo) {
                 console.log('⚠️ Push notifications no disponibles en Expo Go. Usa un development build.');

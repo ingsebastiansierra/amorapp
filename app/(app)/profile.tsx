@@ -7,6 +7,7 @@ import { useAuthStore } from '@/core/store/useAuthStore';
 import { supabase } from '@/core/config/supabase';
 import { AvatarPicker } from '@/shared/components/AvatarPicker';
 import { useTheme } from '@/shared/hooks/useTheme';
+import { TestAdButton } from '@/shared/components/TestAdButton';
 
 interface UserProfile {
     name: string;
@@ -254,6 +255,8 @@ export default function ProfileScreen() {
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </Pressable>
+
+                    <TestAdButton />
 
                     <View style={{ height: 40 }} />
                 </ScrollView>
