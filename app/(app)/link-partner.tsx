@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
         opacity: 0.8,
     },
     input: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: 'rgba(255, 255, 255, 0.35)',
         borderRadius: 12,
         padding: 16,
         fontSize: 24,

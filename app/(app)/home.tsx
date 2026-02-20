@@ -1248,7 +1248,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         letterSpacing: 1.5,
         color: '#6B7280',
-        opacity: 0.6,
+        opacity: 0.9,
     },
     cardContent: {
         flex: 1,
@@ -1549,7 +1549,7 @@ const styles = StyleSheet.create({
         paddingTop: 10,
     },
     partnerCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: 'rgba(255, 255, 255, 0.35)',
         borderRadius: 24,
         padding: 24,
         shadowColor: '#000',
@@ -1558,7 +1558,7 @@ const styles = StyleSheet.create({
         shadowRadius: 12,
         elevation: 8,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.5)',
     },
     partnerCardHeader: {
         marginBottom: 16,
@@ -1567,7 +1567,7 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: '#FFF',
-        opacity: 0.85,
+        opacity: 1,
         textTransform: 'uppercase',
         letterSpacing: 1,
         textAlign: 'center',
@@ -1586,7 +1586,7 @@ const styles = StyleSheet.create({
         textShadowRadius: 3,
     },
     emotionCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        backgroundColor: 'rgba(255, 255, 255, 0.4)',
         borderRadius: 20,
         padding: 20,
         minWidth: 140,
@@ -1608,7 +1608,7 @@ const styles = StyleSheet.create({
         textShadowRadius: 2,
     },
     noEmotionCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
         borderRadius: 16,
         padding: 16,
         alignItems: 'center',
@@ -1621,7 +1621,7 @@ const styles = StyleSheet.create({
     noEmotionText: {
         fontSize: 14,
         color: '#FFF',
-        opacity: 0.9,
+        opacity: 1,
         textAlign: 'center',
         fontWeight: '500',
     },
@@ -1640,7 +1640,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     connectionCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        backgroundColor: 'rgba(255, 255, 255, 0.4)',
         borderRadius: 20,
         paddingVertical: 16,
         paddingHorizontal: 24,
@@ -1666,12 +1666,12 @@ const styles = StyleSheet.create({
     // Sincronización
     syncedContainer: {
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        backgroundColor: 'rgba(255, 255, 255, 0.4)',
         borderRadius: 24,
         paddingVertical: 16,
         paddingHorizontal: 28,
         borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255, 0.5)',
+        borderColor: 'rgba(255, 255, 255, 0.6)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
@@ -1705,7 +1705,7 @@ const styles = StyleSheet.create({
     syncedCountText: {
         fontSize: 11,
         color: '#FFF',
-        opacity: 0.8,
+        opacity: 1,
         marginTop: 4,
     },
     // Hint animado
@@ -1746,19 +1746,19 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: '#FFF',
-        opacity: 0.85,
+        opacity: 1,
         textTransform: 'uppercase',
         letterSpacing: 1,
         textAlign: 'center',
         marginBottom: 16,
     },
     myEmotionCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        backgroundColor: 'rgba(255, 255, 255, 0.45)',
         borderRadius: 24,
         padding: 28,
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255, 0.5)',
+        borderColor: 'rgba(255, 255, 255, 0.65)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
@@ -1786,7 +1786,7 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: '600',
         color: '#FFF',
-        opacity: 0.95,
+        opacity: 1,
     },
     // Barra de acciones rápidas
     quickActionsBar: {
@@ -1798,7 +1798,7 @@ const styles = StyleSheet.create({
     },
     quickActionButton: {
         flex: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        backgroundColor: 'rgba(255, 255, 255, 0.4)',
         borderRadius: 20,
         paddingVertical: 16,
         paddingHorizontal: 12,
@@ -1809,7 +1809,7 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 4,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.5)',
     },
     quickActionIcon: {
         fontSize: 32,

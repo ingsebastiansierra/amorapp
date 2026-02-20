@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -7,6 +7,7 @@ import { useThemeStore } from '@/core/store/useThemeStore';
 import { useChatBackgroundStore, MessageColorTheme, EmojiStyle } from '@/core/store/useChatBackgroundStore';
 import { THEMES, FREE_THEMES, PREMIUM_THEMES } from '@/core/config/themes';
 import { ThemeType } from '@/core/types/theme';
+import { useRewardedAd } from '@/shared/hooks/useRewardedAd';
 import * as Haptics from 'expo-haptics';
 
 const COLOR_THEMES = [
@@ -58,21 +59,127 @@ export default function ThemeSettingsScreen() {
     const currentTheme = useThemeStore(state => state.currentTheme);
     const setTheme = useThemeStore(state => state.setTheme);
     const isPremium = useThemeStore(state => state.isPremium);
+    const unlockedThemes = useThemeStore(state => state.unlockedThemes);
+    const unlockThemeTemporarily = useThemeStore(state => state.unlockThemeTemporarily);
+    const getTimeRemaining = useThemeStore(state => state.getTimeRemaining);
+    const isThemeUnlocked = useThemeStore(state => state.isThemeUnlocked);
     const { messageColorTheme, emojiStyle, setMessageColorTheme, setEmojiStyle } = useChatBackgroundStore();
     const [hasChanges, setHasChanges] = useState(false);
+    const [selectedPremiumTheme, setSelectedPremiumTheme] = useState<ThemeType | null>(null);
+    const [timeRemainingMap, setTimeRemainingMap] = useState<Record<string, number>>({});
+
+    // Actualizar el tiempo restante cada segundo para todos los temas desbloqueados
+    useEffect(() => {
+        const updateTimers = () => {
+            const newMap: Record<string, number> = {};
+            unlockedThemes.forEach(({ themeId }) => {
+                const remaining = getTimeRemaining(themeId);
+                if (remaining) {
+                    newMap[themeId] = remaining;
+                }
+            });
+            setTimeRemainingMap(newMap);
+        };
+
+        updateTimers();
+        const interval = setInterval(updateTimers, 1000);
+
+        return () => clearInterval(interval);
+    }, [getTimeRemaining, unlockedThemes]);
+
+    // Función para formatear el tiempo restante
+    const formatTimeRemaining = (ms: number): string => {
+        const hours = Math.floor(ms / (1000 * 60 * 60));
+        const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((ms % (1000 * 60)) / 1000);
+
+        if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        } else {
+            return `${seconds}s`;
+        }
+    };
+
+    // Callback para cuando el usuario ve el anuncio completo
+    const handleAdReward = useCallback(async () => {
+        if (selectedPremiumTheme) {
+            // Desbloquear SOLO este tema por 24 horas
+            await unlockThemeTemporarily(selectedPremiumTheme);
+
+            // Aplicar el tema (ahora el estado ya está actualizado)
+            await setTheme(selectedPremiumTheme);
+
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+            Alert.alert(
+                '🎉 ¡Tema Desbloqueado!',
+                `Has desbloqueado "${THEMES[selectedPremiumTheme].name}" por 24 horas.\n\n¡Disfruta tu tema premium!`,
+                [{ text: 'Genial', style: 'default' }]
+            );
+
+            setSelectedPremiumTheme(null);
+        }
+    }, [selectedPremiumTheme, unlockThemeTemporarily, setTheme]);
+
+    const { showAd, isLoaded, isLoading } = useRewardedAd(handleAdReward);
 
     const handleThemeSelect = async (themeId: ThemeType) => {
         const theme = THEMES[themeId];
+        const isUnlocked = isThemeUnlocked(themeId);
 
-        if (theme.isPremium && !isPremium) {
+        // Solo mostrar el anuncio si es premium, no tiene premium Y no está desbloqueado
+        if (theme.isPremium && !isPremium && !isUnlocked) {
+            setSelectedPremiumTheme(themeId);
+
+            // Siempre mostrar el diálogo primero
             Alert.alert(
                 '🔒 Tema Premium',
-                `"${theme.name}" requiere suscripción Premium.\n\n${theme.description}`,
+                `"${theme.name}" es un tema premium.\n\n${theme.description}\n\n¿Quieres desbloquearlo por 24 horas viendo un anuncio?`,
                 [
-                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Cancelar', style: 'cancel', onPress: () => setSelectedPremiumTheme(null) },
                     {
-                        text: 'Ver Premium',
-                        onPress: () => Alert.alert('Próximamente', 'Suscripción Premium disponible pronto'),
+                        text: isLoaded ? '📺 Ver Anuncio' : (isLoading ? '⏳ Cargando...' : '📺 Ver Anuncio'),
+                        onPress: () => {
+                            if (isLoaded) {
+                                showAd();
+                            } else if (isLoading) {
+                                // Esperar a que se cargue
+                                Alert.alert(
+                                    '⏳ Cargando anuncio',
+                                    'El anuncio se está cargando, por favor espera un momento...',
+                                    [
+                                        { text: 'Cancelar', style: 'cancel', onPress: () => setSelectedPremiumTheme(null) },
+                                        {
+                                            text: 'Esperar',
+                                            onPress: () => {
+                                                // Verificar cada 500ms si el anuncio está listo
+                                                const checkInterval = setInterval(() => {
+                                                    if (isLoaded) {
+                                                        clearInterval(checkInterval);
+                                                        showAd();
+                                                    }
+                                                }, 500);
+
+                                                // Timeout después de 10 segundos
+                                                setTimeout(() => {
+                                                    clearInterval(checkInterval);
+                                                    if (!isLoaded) {
+                                                        Alert.alert('⚠️ Anuncio no disponible', 'No se pudo cargar el anuncio. Intenta de nuevo en unos momentos.');
+                                                        setSelectedPremiumTheme(null);
+                                                    }
+                                                }, 10000);
+                                            }
+                                        }
+                                    ]
+                                );
+                            } else {
+                                Alert.alert('⚠️ Anuncio no disponible', 'No se pudo cargar el anuncio. Intenta de nuevo en unos momentos.');
+                                setSelectedPremiumTheme(null);
+                            }
+                        },
+                        style: 'default'
                     },
                 ]
             );
@@ -278,14 +385,17 @@ export default function ThemeSettingsScreen() {
                         {PREMIUM_THEMES.map((themeId) => {
                             const theme = THEMES[themeId];
                             const isSelected = currentTheme === themeId;
-                            const isLocked = !isPremium;
+                            const isUnlocked = isThemeUnlocked(themeId);
+                            const isLocked = !isPremium && !isUnlocked;
+                            const timeRemaining = timeRemainingMap[themeId];
 
                             return (
                                 <Pressable
                                     key={themeId}
                                     style={[
                                         styles.themeCard,
-                                        isSelected && styles.selected
+                                        isSelected && styles.selected,
+                                        isUnlocked && styles.unlocked
                                     ]}
                                     onPress={() => handleThemeSelect(themeId)}
                                 >
@@ -298,6 +408,15 @@ export default function ThemeSettingsScreen() {
                                             </View>
                                         )}
 
+                                        {isUnlocked && timeRemaining && (
+                                            <View style={styles.timerBadge}>
+                                                <Ionicons name="time-outline" size={14} color="#FFF" />
+                                                <Text style={styles.timerText}>
+                                                    {formatTimeRemaining(timeRemaining)}
+                                                </Text>
+                                            </View>
+                                        )}
+
                                         {isSelected && (
                                             <View style={styles.check}>
                                                 <Ionicons name="checkmark-circle" size={28} color="#10B981" />
@@ -305,7 +424,14 @@ export default function ThemeSettingsScreen() {
                                         )}
                                     </View>
                                     <View style={styles.info}>
-                                        <Text style={styles.name} numberOfLines={1}>{theme.name}</Text>
+                                        <View style={styles.nameRow}>
+                                            <Text style={styles.name} numberOfLines={1}>{theme.name}</Text>
+                                            {isUnlocked && (
+                                                <View style={styles.unlockedBadge}>
+                                                    <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                                                </View>
+                                            )}
+                                        </View>
                                         <Text style={styles.description} numberOfLines={2}>{theme.description}</Text>
                                         <View style={styles.dots}>
                                             <View style={[styles.dot, { backgroundColor: theme.colors.primary }]} />
@@ -639,6 +765,11 @@ const styles = StyleSheet.create({
         borderColor: '#10B981',
         borderWidth: 3
     },
+    unlocked: {
+        borderColor: '#10B981',
+        borderWidth: 2,
+        backgroundColor: '#F0FDF4'
+    },
     preview: {
         height: 120,
         borderTopLeftRadius: 10,
@@ -665,14 +796,42 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         padding: 8
     },
+    timerBadge: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        backgroundColor: 'rgba(16, 185, 129, 0.9)',
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4
+    },
+    timerText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#FFF'
+    },
     info: {
         padding: 12
+    },
+    nameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 4
     },
     name: {
         fontSize: 14,
         fontWeight: '600',
         color: '#111',
-        marginBottom: 4
+        flex: 1
+    },
+    unlockedBadge: {
+        backgroundColor: '#D1FAE5',
+        borderRadius: 10,
+        padding: 3
     },
     description: {
         fontSize: 11,

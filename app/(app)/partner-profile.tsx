@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
         marginBottom: 30,
     },
     infoCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: 'rgba(255, 255, 255, 0.35)',
         borderRadius: 16,
         padding: 20,
         marginBottom: 12,

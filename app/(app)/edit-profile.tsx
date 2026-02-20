@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     input: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: 'rgba(255, 255, 255, 0.35)',
         borderRadius: 12,
         padding: 16,
         fontSize: 16,
@@ -279,8 +279,8 @@ const styles = StyleSheet.create({
         borderColor: 'transparent',
     },
     inputDisabled: {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        opacity: 0.6,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        opacity: 0.8,
     },
     warningBox: {
         flexDirection: 'row',
