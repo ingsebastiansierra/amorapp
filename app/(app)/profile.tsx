@@ -235,8 +235,22 @@ export default function ProfileScreen() {
                             <Ionicons name="heart" size={24} color={colors.primary} />
                         </View>
                         <View style={styles.settingContent}>
-                            <Text style={styles.settingTitle}>Vincular Pareja</Text>
-                            <Text style={styles.settingSubtitle}>Conéctate con tu pareja</Text>
+                            <Text style={styles.settingTitle}>Estado de Relación</Text>
+                            <Text style={styles.settingSubtitle}>Gestiona tu vinculación de pareja</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                    </Pressable>
+
+                    <Pressable
+                        style={styles.settingCard}
+                        onPress={() => router.push('/(app)/suggestions')}
+                    >
+                        <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name="bulb" size={24} color={colors.primary} />
+                        </View>
+                        <View style={styles.settingContent}>
+                            <Text style={styles.settingTitle}>Sugerencias</Text>
+                            <Text style={styles.settingSubtitle}>Ayúdanos a mejorar la app</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </Pressable>

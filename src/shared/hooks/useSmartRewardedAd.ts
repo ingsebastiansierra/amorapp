@@ -18,13 +18,16 @@ export const useSmartRewardedAd = (onReward: () => void) => {
 
   // Cargar anuncio recompensado (primario)
   useEffect(() => {
-    const rewardedAd = RewardedAd.createForAdRequest(ADMOB_REWARDED_ID);
+    console.log('🎬 Inicializando anuncio recompensado con ID:', ADMOB_REWARDED_ID);
+    const rewardedAd = RewardedAd.createForAdRequest(ADMOB_REWARDED_ID, {
+      requestNonPersonalizedAdsOnly: false,
+    });
     setIsLoading(true);
 
     const loadedListener = rewardedAd.addAdEventListener(
       RewardedAdEventType.LOADED,
       () => {
-        console.log('✅ Anuncio recompensado cargado');
+        console.log('✅ Anuncio recompensado cargado exitosamente');
         setIsLoaded(true);
         setIsLoading(false);
         setRewardedFailed(false);
@@ -33,20 +36,34 @@ export const useSmartRewardedAd = (onReward: () => void) => {
 
     const earnedListener = rewardedAd.addAdEventListener(
       RewardedAdEventType.EARNED_REWARD,
-      () => {
-        console.log('🎁 Recompensa ganada');
+      (reward) => {
+        console.log('🎁 Recompensa ganada:', reward);
         onRewardRef.current();
         // Precargar el siguiente anuncio
         setIsLoaded(false);
         setIsLoading(true);
         setTimeout(() => {
-          rewardedAd.load();
-        }, 500);
+          try {
+            rewardedAd.load();
+          } catch (error) {
+            console.error('❌ Error recargando anuncio:', error);
+            setIsLoading(false);
+            setRewardedFailed(true);
+          }
+        }, 1000);
       }
     );
 
     setRewarded(rewardedAd);
-    rewardedAd.load();
+    
+    // Cargar el anuncio (no retorna promesa)
+    try {
+      rewardedAd.load();
+    } catch (error) {
+      console.error('❌ Error cargando anuncio recompensado:', error);
+      setIsLoading(false);
+      setRewardedFailed(true);
+    }
 
     return () => {
       loadedListener();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
 import { ADMOB_BANNER_ID, ADMOB_NATIVE_ID } from '@/core/config/admob';
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 export const SmartGalleryAd = () => {
     const [currentAttempt, setCurrentAttempt] = useState(0);
     const [failedAll, setFailedAll] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Fallback chain: Native -> Medium Rectangle -> Banner
     const fallbackOptions = [
@@ -15,21 +16,41 @@ export const SmartGalleryAd = () => {
         { id: ADMOB_BANNER_ID, size: BannerAdSize.BANNER, label: 'Banner' },
     ];
 
+    // Timeout para evitar que se quede cargando indefinidamente
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (isLoading) {
+                console.log('⏱️ Timeout de anuncio de galería, ocultando...');
+                setFailedAll(true);
+            }
+        }, 10000); // 10 segundos
+
+        return () => clearTimeout(timeout);
+    }, [isLoading, currentAttempt]);
+
     const handleAdFail = (error: any) => {
         console.log(`⚠️ Anuncio galería intento ${currentAttempt + 1} (${fallbackOptions[currentAttempt].label}) falló:`, error.message);
 
         if (currentAttempt < fallbackOptions.length - 1) {
             // Intentar siguiente opción
             setCurrentAttempt(currentAttempt + 1);
+            setIsLoading(true);
         } else {
             // Todos los intentos fallaron
-            console.log('❌ Todos los anuncios de galería fallaron');
+            console.log('❌ Todos los anuncios de galería fallaron - ocultando');
             setFailedAll(true);
+            setIsLoading(false);
         }
     };
 
+    const handleAdLoaded = () => {
+        console.log(`✅ Anuncio de galería cargado (${fallbackOptions[currentAttempt].label})`);
+        setIsLoading(false);
+    };
+
+    // No mostrar nada si todos fallan
     if (failedAll) {
-        return null; // No mostrar nada si todos fallan
+        return null;
     }
 
     const currentOption = fallbackOptions[currentAttempt];
@@ -49,9 +70,7 @@ export const SmartGalleryAd = () => {
                 requestOptions={{
                     requestNonPersonalizedAdsOnly: false,
                 }}
-                onAdLoaded={() => {
-                    console.log(`✅ Anuncio de galería cargado (${currentOption.label})`);
-                }}
+                onAdLoaded={handleAdLoaded}
                 onAdFailedToLoad={handleAdFail}
             />
         </View>

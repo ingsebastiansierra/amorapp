@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { InterstitialAd, AdEventType, BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
-import { ADMOB_INTERSTITIAL_ID, ADMOB_BANNER_ID } from '@/core/config/admob';
+import { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
+import { ADMOB_INTERSTITIAL_ID } from '@/core/config/admob';
 
 export const useSmartInterstitialAd = () => {
   const [interstitial, setInterstitial] = useState<InterstitialAd | null>(null);
@@ -10,7 +10,10 @@ export const useSmartInterstitialAd = () => {
   const hasShownRef = useRef(false);
 
   useEffect(() => {
-    const interstitialAd = InterstitialAd.createForAdRequest(ADMOB_INTERSTITIAL_ID);
+    console.log('🎬 Inicializando anuncio intersticial con ID:', ADMOB_INTERSTITIAL_ID);
+    const interstitialAd = InterstitialAd.createForAdRequest(ADMOB_INTERSTITIAL_ID, {
+      requestNonPersonalizedAdsOnly: false,
+    });
 
     setIsLoading(true);
 
@@ -32,13 +35,25 @@ export const useSmartInterstitialAd = () => {
         // Cargar otro anuncio después de cerrar
         setIsLoading(true);
         setTimeout(() => {
-          interstitialAd.load();
-        }, 500);
+          try {
+            interstitialAd.load();
+          } catch (error) {
+            console.error('❌ Error recargando intersticial:', error);
+            setIsLoading(false);
+          }
+        }, 1000);
       }
     );
 
     setInterstitial(interstitialAd);
-    interstitialAd.load();
+    
+    // Cargar el anuncio
+    try {
+      interstitialAd.load();
+    } catch (error) {
+      console.error('❌ Error cargando intersticial:', error);
+      setIsLoading(false);
+    }
 
     return () => {
       loadedListener();
@@ -47,11 +62,14 @@ export const useSmartInterstitialAd = () => {
   }, []);
 
   const showAd = useCallback(async () => {
+    console.log('🎯 Intentando mostrar anuncio intersticial...', { isLoaded, hasShown: hasShownRef.current });
+    
     // Si el intersticial está listo, mostrarlo
     if (interstitial && isLoaded && !hasShownRef.current) {
       try {
         hasShownRef.current = true;
         await interstitial.show();
+        console.log('✅ Anuncio intersticial mostrado');
         return true;
       } catch (error) {
         console.error('❌ Error mostrando intersticial:', error);
@@ -65,7 +83,7 @@ export const useSmartInterstitialAd = () => {
     
     // Si el intersticial no está listo, mostrar fallback
     if (!isLoaded) {
-      console.log('🔄 Intersticial no disponible, usando fallback banner');
+      console.log('⏳ Intersticial no disponible, usando fallback banner');
       setShowFallbackModal(true);
       return false;
     }

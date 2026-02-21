@@ -121,7 +121,7 @@ export default function LoginScreen() {
 
     return (
         <LinearGradient
-            colors={['#667eea', '#764ba2', '#f093fb']}
+            colors={['#FF6B9D', '#FF4757', '#FF6348']}
             style={styles.container}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
@@ -144,7 +144,10 @@ export default function LoginScreen() {
                             resizeMode="contain"
                         />
                     </Animated.View>
-                    <Text style={styles.title}>Palpitos</Text>
+                    <View style={styles.titleContainer}>
+                        <Text style={styles.title}>Aura</Text>
+                        <Ionicons name="flame" size={36} color="#FFFFFF" style={styles.titleFlame} />
+                    </View>
                     <Text style={styles.subtitle}>Conéctate con tu persona favorita</Text>
                 </View>
 
@@ -160,7 +163,7 @@ export default function LoginScreen() {
                         ]}
                     >
                         <LinearGradient
-                            colors={['#667eea', '#a8b5ff', '#FFFFFF', '#a8b5ff', '#667eea']}
+                            colors={['#FFFFFF', '#FFD700', '#FFA500', '#FFD700', '#FFFFFF']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={styles.borderGradient}
@@ -237,7 +240,7 @@ export default function LoginScreen() {
                                 disabled={loading}
                             >
                                 <LinearGradient
-                                    colors={['#667eea', '#764ba2']}
+                                    colors={['#FF6B9D', '#FF4757']}
                                     style={styles.loginButtonGradient}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
@@ -251,7 +254,7 @@ export default function LoginScreen() {
                         ) : (
                             <Pressable style={styles.loginButton} onPress={handleDemoMode}>
                                 <LinearGradient
-                                    colors={['#667eea', '#764ba2']}
+                                    colors={['#FF6B9D', '#FF4757']}
                                     style={styles.loginButtonGradient}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
@@ -339,7 +342,7 @@ export default function LoginScreen() {
                             disabled={loading}
                         >
                             <LinearGradient
-                                colors={['#667eea', '#764ba2']}
+                                colors={['#FF6B9D', '#FF4757']}
                                 style={styles.modalButtonGradient}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
@@ -397,6 +400,16 @@ const styles = StyleSheet.create({
         color: '#FFF',
         marginBottom: 4,
     },
+    titleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginBottom: 4,
+    },
+    titleFlame: {
+        marginTop: 4,
+    },
     subtitle: {
         fontSize: 14,
         color: '#FFF',
@@ -405,7 +418,7 @@ const styles = StyleSheet.create({
     cardWrapper: {
         position: 'relative',
         marginBottom: 16,
-        padding: 3,
+        padding: 4,
     },
     animatedBorder: {
         position: 'absolute',
@@ -413,12 +426,11 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        borderRadius: 27,
-        overflow: 'hidden',
+        borderRadius: 28,
     },
     borderGradient: {
         flex: 1,
-        borderRadius: 27,
+        borderRadius: 28,
     },
     card: {
         backgroundColor: '#FFF',

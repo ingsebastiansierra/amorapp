@@ -55,11 +55,11 @@ function MessagesTabIcon({ color, isSynced, focused }: { color: string; isSynced
     }, [user]);
 
     return (
-        <View style={styles.iconContainer}>
+        <>
             <Ionicons
                 name={focused ? "chatbubbles" : "chatbubbles-outline"}
-                size={28}
-                color={isSynced ? color : '#D1D5DB'}
+                size={26}
+                color={focused ? '#FF6B9D' : (isSynced ? color : '#D1D5DB')}
             />
             {!isSynced && (
                 <View style={styles.lockBadge}>
@@ -71,7 +71,7 @@ function MessagesTabIcon({ color, isSynced, focused }: { color: string; isSynced
                     <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
                 </View>
             )}
-        </View>
+        </>
     );
 }
 
@@ -96,57 +96,55 @@ export default function AppLayout() {
             screenOptions={{
                 headerShown: false,
                 tabBarStyle: {
+                    position: 'absolute',
+                    bottom: 20,
+                    left: 50,
+                    right: 50,
                     backgroundColor: '#FFF',
+                    borderRadius: 30,
                     borderTopWidth: 0,
-                    paddingBottom: 24,
-                    paddingTop: 12,
-                    height: 85,
-                    elevation: 8,
+                    paddingBottom: 16,
+                    paddingTop: 16,
+                    paddingHorizontal: 20,
+                    height: 75,
+                    elevation: 12,
                     shadowColor: '#000',
-                    shadowOffset: { width: 0, height: -2 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 16,
                 },
                 tabBarActiveTintColor: '#FF6B9D',
-                tabBarInactiveTintColor: '#4B5563',
+                tabBarInactiveTintColor: '#9CA3AF',
                 tabBarLabelStyle: {
                     fontSize: 10,
-                    fontWeight: '600',
-                    marginTop: 1,
-                    letterSpacing: 0.3,
+                    fontWeight: '700',
+                    marginTop: 4,
+                    letterSpacing: 0.5,
                 },
                 tabBarIconStyle: {
-                    marginTop: 5,
+                    marginTop: 0,
                 },
             }}
         >
             <Tabs.Screen
                 name="home"
                 options={{
-                    title: 'INICIO',
+                    title: 'Inicio',
                     tabBarIcon: ({ color, focused }) => (
-                        focused ? (
-                            <View style={styles.fireIconWrapper}>
-                                <Ionicons name="flame" size={25} color="#FF6B9D" />
-                            </View>
-                        ) : (
-                            <Ionicons name="home-outline" size={28} color={color} />
-                        )
+                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
+                            <Ionicons name={focused ? "flame" : "flame-outline"} size={26} color={focused ? '#FF6B9D' : color} />
+                        </View>
                     ),
                 }}
             />
             <Tabs.Screen
                 name="messages"
                 options={{
-                    title: 'MENSAJES',
+                    title: 'Chats',
                     tabBarIcon: ({ color, focused }) => (
-                        focused ? (
-                            <View style={styles.fireIconWrapper}>
-                                <Ionicons name="flame" size={25} color="#FF6B9D" />
-                            </View>
-                        ) : (
+                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
                             <MessagesTabIcon color={color} isSynced={isSynced} focused={focused} />
-                        )
+                        </View>
                     ),
                     tabBarStyle: { display: 'none' },
                 }}
@@ -165,32 +163,36 @@ export default function AppLayout() {
                 }}
             />
             <Tabs.Screen
+                name="voice-notes"
+                options={{
+                    title: '',
+                    tabBarIcon: ({ color, focused }) => (
+                        <View style={[styles.centerButton, focused && styles.centerButtonActive]}>
+                            <Ionicons name="add" size={32} color="#FFF" />
+                        </View>
+                    ),
+                    tabBarLabel: () => null,
+                }}
+            />
+            <Tabs.Screen
                 name="private-images"
                 options={{
-                    title: 'GALERÍA',
+                    title: 'Galería',
                     tabBarIcon: ({ color, focused }) => (
-                        focused ? (
-                            <View style={styles.fireIconWrapper}>
-                                <Ionicons name="flame" size={25} color="#FF6B9D" />
-                            </View>
-                        ) : (
-                            <Ionicons name="images-outline" size={28} color={color} />
-                        )
+                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
+                            <Ionicons name={focused ? "images" : "images-outline"} size={26} color={focused ? '#FF6B9D' : color} />
+                        </View>
                     ),
                 }}
             />
             <Tabs.Screen
                 name="profile"
                 options={{
-                    title: 'PERFIL',
+                    title: 'Perfil',
                     tabBarIcon: ({ color, focused }) => (
-                        focused ? (
-                            <View style={styles.fireIconWrapper}>
-                                <Ionicons name="flame" size={25} color="#FF6B9D" />
-                            </View>
-                        ) : (
-                            <Ionicons name="person-circle-outline" size={28} color={color} />
-                        )
+                        <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
+                            <Ionicons name={focused ? "person-circle" : "person-circle-outline"} size={26} color={focused ? '#FF6B9D' : color} />
+                        </View>
                     ),
                 }}
             />
@@ -220,13 +222,6 @@ export default function AppLayout() {
                 }}
             />
             <Tabs.Screen
-                name="voice-notes"
-                options={{
-                    href: null,
-                }}
-            />
-
-            <Tabs.Screen
                 name="theme-settings"
                 options={{
                     href: null,
@@ -238,11 +233,44 @@ export default function AppLayout() {
                     href: null,
                 }}
             />
+            <Tabs.Screen
+                name="suggestions"
+                options={{
+                    href: null,
+                }}
+            />
         </Tabs>
     );
 }
 
 const styles = StyleSheet.create({
+    iconWrapper: {
+        width: 50,
+        height: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 25,
+    },
+    iconWrapperActive: {
+        backgroundColor: '#FFE8F0',
+    },
+    centerButton: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#FF6B9D',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+        shadowColor: '#FF6B9D',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    centerButtonActive: {
+        backgroundColor: '#E5507A',
+    },
     fireIconWrapper: {
         marginBottom: 4,
     },

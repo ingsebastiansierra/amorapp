@@ -6,7 +6,15 @@ const IS_DEV = __DEV__;
 
 // ✅ ANUNCIOS REALES ACTIVADOS
 // Cambia USE_TEST_ADS a true si quieres volver a usar IDs de prueba
+// NOTA: Los anuncios reales pueden tardar 24-48 horas en activarse después de publicar
 const USE_TEST_ADS = false;
+
+// Log para debug
+console.log('🎯 AdMob Config:', {
+  isDev: IS_DEV,
+  useTestAds: USE_TEST_ADS,
+  mode: (IS_DEV || USE_TEST_ADS) ? 'TEST' : 'PRODUCTION'
+});
 
 export const ADMOB_REWARDED_ID = (IS_DEV || USE_TEST_ADS)
   ? 'ca-app-pub-3940256099942544/5224354917' // ID de prueba de Google

@@ -4,6 +4,7 @@ import { View, Text, Pressable, StyleSheet, Alert, Animated, PanResponder } from
 import { Ionicons } from '@expo/vector-icons';
 import { voiceService } from '@/core/services/voiceService';
 import { useVoiceNotes } from '../hooks/useVoiceNotes';
+import { requestAudioPermissions, initializeAudio } from '@/shared/utils/permissions';
 import * as Haptics from 'expo-haptics';
 
 interface Props {
@@ -93,23 +94,35 @@ export function VoiceRecorderButton({ toUserId, onSent, onOptimisticSend, size =
 
     const handleStartRecording = async () => {
         try {
-            // Solicitar permisos
-            const hasPermission = await voiceService.requestPermissions();
+            console.log('🎤 Iniciando grabación de voz...');
+
+            // Solicitar permisos primero
+            const hasPermission = await requestAudioPermissions();
             if (!hasPermission) {
-                Alert.alert('Permisos necesarios', 'Necesitamos acceso al micrófono');
+                console.warn('⚠️ Permisos de audio denegados');
                 return;
             }
 
+            // Inicializar sistema de audio
+            const audioInitialized = await initializeAudio();
+            if (!audioInitialized) {
+                console.error('❌ No se pudo inicializar el sistema de audio');
+                Alert.alert('Error', 'No se pudo inicializar el micrófono. Intenta de nuevo.');
+                return;
+            }
+
+            // Iniciar grabación
             await voiceService.startRecording();
             recordingStartTime.current = Date.now();
             setIsRecording(true);
             isRecordingRef.current = true;
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            console.log('✅ Grabación iniciada correctamente');
         } catch (error: any) {
-            console.error('Error starting recording:', error);
+            console.error('❌ Error starting recording:', error);
             // Solo mostrar alerta si no es un error de permisos
             if (!error.message?.includes('permission')) {
-                Alert.alert('Error', 'No se pudo iniciar la grabación');
+                Alert.alert('Error', 'No se pudo iniciar la grabación. Verifica los permisos del micrófono.');
             }
             setIsRecording(false);
             isRecordingRef.current = false;

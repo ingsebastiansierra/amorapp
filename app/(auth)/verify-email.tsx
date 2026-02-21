@@ -52,16 +52,8 @@ export default function VerifyEmailScreen() {
                     params.avatarUri || null
                 );
 
-                Alert.alert(
-                    '¡Cuenta verificada!',
-                    'Tu cuenta ha sido creada exitosamente.',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => router.replace('/(app)/home')
-                        }
-                    ]
-                );
+                // Redirect to home
+                router.replace('/(app)/home');
             }
         } catch (error: any) {
             Alert.alert('Error', error.message);

@@ -213,7 +213,7 @@ export default function RegisterScreen() {
 
     return (
         <LinearGradient
-            colors={['#667eea', '#764ba2', '#f093fb']}
+            colors={['#FF6B9D', '#FF4757', '#FF6348']}
             style={styles.container}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
@@ -234,7 +234,7 @@ export default function RegisterScreen() {
                         resizeMode="contain"
                     />
                     <Text style={styles.title}>Crear Cuenta</Text>
-                    <Text style={styles.subtitle}>Únete a Palpitos</Text>
+                    <Text style={styles.subtitle}>Únete a Aura 🔥</Text>
                 </View>
 
                 {/* Card */}
@@ -249,7 +249,7 @@ export default function RegisterScreen() {
                         ]}
                     >
                         <LinearGradient
-                            colors={['#667eea', '#a8b5ff', '#FFFFFF', '#a8b5ff', '#667eea']}
+                            colors={['#FFFFFF', '#FFD700', '#FFA500', '#FFD700', '#FFFFFF']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={styles.borderGradient}
@@ -476,7 +476,7 @@ export default function RegisterScreen() {
                             disabled={loading}
                         >
                             <LinearGradient
-                                colors={['#667eea', '#764ba2']}
+                                colors={['#FF6B9D', '#FF4757']}
                                 style={styles.registerButtonGradient}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     cardWrapper: {
         position: 'relative',
         marginBottom: 24,
-        padding: 3,
+        padding: 4,
     },
     animatedBorder: {
         position: 'absolute',
@@ -566,12 +566,11 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        borderRadius: 27,
-        overflow: 'hidden',
+        borderRadius: 28,
     },
     borderGradient: {
         flex: 1,
-        borderRadius: 27,
+        borderRadius: 28,
     },
     card: {
         backgroundColor: '#FFF',

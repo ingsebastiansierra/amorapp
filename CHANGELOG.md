@@ -2,6 +2,42 @@
 
 Registro de cambios importantes del proyecto Palpitos.
 
+## [2026-02-21] - Correcciones Críticas v1.0.1
+
+### 🐛 Corregido
+- **Grabación de Audio:** Mejorado el manejo de permisos del micrófono con validación previa
+- **Inicialización de Audio:** Sistema de audio se inicializa correctamente antes de grabar
+- **Permisos:** Mensajes de error más claros cuando se deniegan permisos
+- **Anuncios:** Agregado logging detallado para diagnosticar problemas con AdMob
+- **Anuncios:** Mejorado el sistema de fallback cuando no hay anuncios disponibles
+
+### ✨ Agregado
+- Nuevo sistema centralizado de manejo de permisos (`src/shared/utils/permissions.ts`)
+- Función `requestAudioPermissions()` con mejor UX
+- Función `initializeAudio()` para configurar el sistema de audio
+- Logging detallado en configuración de AdMob
+- Listener de errores en carga de anuncios recompensados
+
+### 📝 Documentación
+- `docs/CRITICAL_FIXES.md` - Diagnóstico completo de problemas
+- `docs/ADMOB_VERIFICATION.md` - Guía paso a paso para verificar AdMob
+- Instrucciones para diagnosticar problemas de anuncios
+- Checklist de verificación de AdMob
+
+### ⚙️ Técnico
+- Versión incrementada a 1.0.1 (versionCode: 2)
+- Mejorado manejo de errores en `VoiceRecorderButton`
+- Agregado `RewardedAdEventType.FAILED_TO_LOAD` listener
+- Timeout de recarga de anuncios aumentado de 500ms a 1000ms
+- Mejor logging en toda la cadena de anuncios
+
+### 🎯 Optimizaciones
+- Reducido el uso de memoria en inicio de la app
+- Mejor manejo de errores asíncronos
+- Validación de permisos antes de operaciones críticas
+
+---
+
 ## [2026-02-20] - Mejora de UX en Mensajes Citados
 
 ### 🎨 Mejorado
