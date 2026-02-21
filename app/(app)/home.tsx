@@ -10,6 +10,7 @@ import { avatarService } from '@/core/services/avatarService';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { ProfileProgressCard } from '@/shared/components/ProfileProgressCard';
 import { LinearGradient } from 'expo-linear-gradient';
+import { UserProfileModal } from './components/UserProfileModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -48,7 +49,7 @@ const AnimatedBubble = ({ user, bubbleSize, borderColor, position, onPress }: an
                 width: bubbleSize,
                 height: bubbleSize,
                 borderColor,
-                borderWidth: 4,
+                borderWidth: 2,
                 transform: [{ scale: pulseAnim }]
             }]}>
                 {user.avatar_url ? (
@@ -120,6 +121,8 @@ export default function HomeScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [selectedIntention, setSelectedIntention] = useState<string>('all');
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+    const [showProfileModal, setShowProfileModal] = useState(false);
     const menuSlide = React.useRef(new Animated.Value(300)).current;
     const gradientAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -283,7 +286,8 @@ export default function HomeScreen() {
     };
 
     const handleUserPress = (userId: string) => {
-        console.log('Ver perfil:', userId);
+        setSelectedUserId(userId);
+        setShowProfileModal(true);
     };
 
     const handleUserLike = (userId: string) => {
@@ -297,48 +301,56 @@ export default function HomeScreen() {
         if (!user) return;
 
         try {
-            const { data: users, error } = await supabase
+            // Obtener preferencias del usuario actual
+            const { data: myPreferences } = await supabase
+                .from('user_preferences')
+                .select('looking_for_gender')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            // Determinar qué género mostrar según las preferencias
+            const lookingFor = myPreferences?.looking_for_gender || 'any';
+
+            // Construir query base: usuarios disponibles que no sean el usuario actual
+            let query = supabase
                 .from('users')
-                .select(`
-                    id, name, avatar_url, bio, birth_date, gender, last_active
-                `)
+                .select('id, name, avatar_url, gender, birth_date')
                 .neq('id', user.id)
-                .eq('is_available', true)
-                .limit(50);
+                .is('couple_id', null); // Solo usuarios solteros
 
-            if (error) throw error;
+            // Aplicar filtro de género según preferencias
+            if (lookingFor === 'male') {
+                query = query.eq('gender', 'male');
+            } else if (lookingFor === 'female') {
+                query = query.eq('gender', 'female');
+            }
+            // Si es 'any', no aplicamos filtro de género
 
-            const userIds = users?.map(u => u.id) || [];
-            const { data: intentions } = await supabase
-                .from('user_intentions')
-                .select('user_id, intention_type, activity, availability')
-                .in('user_id', userIds)
-                .eq('is_active', true);
+            const { data: usersData, error } = await query.limit(30);
 
-            const intentionsMap = new Map(
-                intentions?.map(i => [i.user_id, i]) || []
-            );
+            if (error) {
+                console.error('Error fetching users:', error);
+                return;
+            }
 
-            const usersWithData: NearbyUser[] = (users || []).map(u => {
-                const isOnline = u.last_active ?
-                    (new Date().getTime() - new Date(u.last_active).getTime()) < 5 * 60 * 1000 : false;
+            // Transformar datos a formato NearbyUser
+            const nearbyUsersData: NearbyUser[] = (usersData || []).map(u => ({
+                id: u.id,
+                name: u.name,
+                avatar_url: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&size=150`,
+                bio: null,
+                birth_date: u.birth_date,
+                gender: u.gender,
+                compatibility: Math.floor(Math.random() * 40) + 60, // TODO: Calcular compatibilidad real
+                interests: [], // TODO: Cargar intereses reales
+                distance: Math.floor(Math.random() * 50) + 1, // TODO: Calcular distancia real
+                is_online: Math.random() > 0.5, // TODO: Verificar estado online real
+                intention: undefined, // TODO: Cargar intención real
+            }));
 
-                return {
-                    id: u.id,
-                    name: u.name,
-                    avatar_url: u.avatar_url,
-                    bio: u.bio,
-                    birth_date: u.birth_date,
-                    gender: u.gender,
-                    compatibility: Math.floor(Math.random() * 40) + 60,
-                    interests: ['Música', 'Deportes', 'Viajes'],
-                    distance: Math.floor(Math.random() * 50) + 1,
-                    is_online: isOnline,
-                    intention: intentionsMap.get(u.id),
-                };
-            });
-
-            setNearbyUsers(usersWithData);
+            // Mezclar aleatoriamente
+            const shuffled = nearbyUsersData.sort(() => Math.random() - 0.5);
+            setNearbyUsers(shuffled);
         } catch (error) {
             console.error('Error loading nearby users:', error);
         }
@@ -604,6 +616,18 @@ export default function HomeScreen() {
                     </Pressable>
                 </Modal>
             </SafeAreaView >
+
+            {/* Modal de perfil de usuario */}
+            {selectedUserId && (
+                <UserProfileModal
+                    visible={showProfileModal}
+                    userId={selectedUserId}
+                    onClose={() => {
+                        setShowProfileModal(false);
+                        setSelectedUserId(null);
+                    }}
+                />
+            )}
         </View >
     );
 }
@@ -821,6 +845,11 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#2D3748',
         textAlign: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        overflow: 'hidden',
     },
     bubbleAge: {
         fontSize: 11,

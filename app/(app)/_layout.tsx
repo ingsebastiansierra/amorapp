@@ -239,6 +239,12 @@ export default function AppLayout() {
                     href: null,
                 }}
             />
+            <Tabs.Screen
+                name="preferences-settings"
+                options={{
+                    href: null,
+                }}
+            />
         </Tabs>
     );
 }

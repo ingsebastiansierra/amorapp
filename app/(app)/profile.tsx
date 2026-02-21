@@ -177,6 +177,20 @@ export default function ProfileScreen() {
                     <Text style={styles.sectionTitle}>CONFIGURACIÓN</Text>
 
                     {/* Settings Cards */}
+                    <Pressable
+                        style={styles.settingCard}
+                        onPress={() => router.push('/(app)/preferences-settings')}
+                    >
+                        <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name="search" size={24} color={colors.primary} />
+                        </View>
+                        <View style={styles.settingContent}>
+                            <Text style={styles.settingTitle}>Preferencias de Búsqueda</Text>
+                            <Text style={styles.settingSubtitle}>Género, edad, distancia en Discovery</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                    </Pressable>
+
                     <Pressable style={styles.settingCard}>
                         <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
                             <Ionicons name="notifications" size={24} color={colors.primary} />
