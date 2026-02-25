@@ -462,7 +462,7 @@ export default function ThemeSettingsScreen() {
                     </Pressable>
                 )}
 
-                <View style={{ height: 40 }} />
+                <View style={{ height: 120 }} />
             </ScrollView>
 
             {/* Botón Guardar Cambios */}

@@ -16,7 +16,7 @@ class FirebaseService {
     // Firebase se inicializará automáticamente cuando hagas un build nativo
     // Por ahora, solo registramos que está listo
     this.initialized = true;
-    console.log('✅ Firebase listo para build nativo');
+    // console.log('✅ Firebase listo para build nativo');
   }
 
   async getToken(): Promise<string | null> {

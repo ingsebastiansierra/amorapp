@@ -283,6 +283,7 @@ export default function CalendarScreen() {
                         })
                     )}
                 </View>
+                <View style={{ height: 120 }} />
             </ScrollView>
 
             {/* Floating Action Button */}

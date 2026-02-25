@@ -34,7 +34,7 @@ if (!isExpoGo) {
 }
 
 export interface NotificationData {
-    type: 'emotion_change' | 'sync_detected' | 'message_received' | 'image_received' | 'voice_received';
+    type: 'emotion_change' | 'sync_detected' | 'message_received' | 'image_received' | 'voice_received' | 'connection_request';
     emotion?: string;
     partnerId?: string;
     partnerName?: string;
@@ -247,6 +247,30 @@ class NotificationService {
             data: {
                 type: 'voice_received',
                 screen: 'voice-notes',
+            },
+            sound: 'default',
+            priority: 'high',
+            badge: 1,
+        });
+    }
+
+    /**
+     * Enviar notificación de solicitud de conexión recibida
+     */
+    async sendConnectionRequestNotification(
+        recipientToken: string,
+        senderName: string,
+        senderGender: string
+    ): Promise<void> {
+        const genderEmoji = senderGender === 'male' ? '👨' : '👩';
+        
+        await this.sendPushNotification({
+            to: recipientToken,
+            title: `${genderEmoji} Nueva solicitud de conexión`,
+            body: `${senderName} quiere conectar contigo`,
+            data: {
+                type: 'connection_request',
+                screen: 'connection-requests',
             },
             sound: 'default',
             priority: 'high',

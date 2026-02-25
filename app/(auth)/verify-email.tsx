@@ -52,8 +52,8 @@ export default function VerifyEmailScreen() {
                     params.avatarUri || null
                 );
 
-                // Redirect to home
-                router.replace('/(app)/home');
+                // Redirect to pre-registration screen
+                router.replace('/(onboarding)/pre-registration');
             }
         } catch (error: any) {
             Alert.alert('Error', error.message);

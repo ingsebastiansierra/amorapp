@@ -10,11 +10,11 @@ const IS_DEV = __DEV__;
 const USE_TEST_ADS = false;
 
 // Log para debug
-console.log('🎯 AdMob Config:', {
-  isDev: IS_DEV,
-  useTestAds: USE_TEST_ADS,
-  mode: (IS_DEV || USE_TEST_ADS) ? 'TEST' : 'PRODUCTION'
-});
+// console.log('🎯 AdMob Config:', {
+//   isDev: IS_DEV,
+//   useTestAds: USE_TEST_ADS,
+//   mode: (IS_DEV || USE_TEST_ADS) ? 'TEST' : 'PRODUCTION'
+// });
 
 export const ADMOB_REWARDED_ID = (IS_DEV || USE_TEST_ADS)
   ? 'ca-app-pub-3940256099942544/5224354917' // ID de prueba de Google

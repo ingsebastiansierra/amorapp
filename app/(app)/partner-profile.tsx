@@ -123,6 +123,7 @@ export default function PartnerProfileScreen() {
                             <Text style={styles.infoValue}>{profile?.age} años</Text>
                         </View>
                     </View>
+                    <View style={{ height: 120 }} />
                 </ScrollView>
             </SafeAreaView>
         </LinearGradient>

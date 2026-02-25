@@ -48,7 +48,7 @@ export default function FoodScreen() {
             });
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            router.push('/(onboarding)/lifestyle');
+            router.back();
         } catch (error) {
             console.error('Error updating food interests:', error);
             Alert.alert('Error', 'No se pudo guardar tu información');
@@ -59,7 +59,7 @@ export default function FoodScreen() {
 
     const handleSkip = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push('/(onboarding)/lifestyle');
+        router.back();
     };
 
     const handleBack = () => {

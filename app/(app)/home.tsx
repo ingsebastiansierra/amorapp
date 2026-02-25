@@ -8,7 +8,6 @@ import { useAuthStore } from '@/core/store/useAuthStore';
 import { supabase } from '@/core/config/supabase';
 import { avatarService } from '@/core/services/avatarService';
 import { useTheme } from '@/shared/hooks/useTheme';
-import { ProfileProgressCard } from '@/shared/components/ProfileProgressCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { UserProfileModal } from './components/UserProfileModal';
 
@@ -54,7 +53,7 @@ const AnimatedBubble = ({ user, bubbleSize, borderColor, position, onPress }: an
             }]}>
                 {user.avatar_url ? (
                     <Image
-                        source={{ uri: avatarService.getAvatarUrl(user.avatar_url) || undefined }}
+                        source={{ uri: user.avatar_url }}
                         style={styles.bubbleImage}
                     />
                 ) : (
@@ -87,15 +86,6 @@ interface UserIntention {
     availability: 'now' | 'today' | 'this_week' | 'flexible';
 }
 
-interface UserInterests {
-    music_favorite_artist: string | null;
-    entertainment_favorite_movie: string | null;
-    sports_favorite_sport: string | null;
-    food_favorite_food: string | null;
-    lifestyle_favorite_color: string | null;
-    profile_completed: boolean;
-}
-
 interface NearbyUser {
     id: string;
     name: string;
@@ -116,13 +106,13 @@ export default function HomeScreen() {
     const { colors } = useTheme();
     const [showMenu, setShowMenu] = useState(false);
     const [myProfile, setMyProfile] = useState<{ name: string; avatar_url: string | null } | null>(null);
-    const [userInterests, setUserInterests] = useState<UserInterests | null>(null);
     const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [selectedIntention, setSelectedIntention] = useState<string>('all');
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [showProfileModal, setShowProfileModal] = useState(false);
+    const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
     const menuSlide = React.useRef(new Animated.Value(300)).current;
     const gradientAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -146,14 +136,14 @@ export default function HomeScreen() {
 
     useEffect(() => {
         loadMyProfile();
-        loadUserInterests();
         loadNearbyUsers();
+        loadPendingRequests();
     }, []);
 
     useFocusEffect(
         React.useCallback(() => {
-            loadUserInterests();
             loadNearbyUsers();
+            loadPendingRequests();
         }, [])
     );
 
@@ -191,84 +181,22 @@ export default function HomeScreen() {
         }
     };
 
-    const loadUserInterests = async () => {
+    const loadPendingRequests = async () => {
         if (!user) return;
 
-        setLoading(true);
         try {
             const { data, error } = await supabase
-                .from('user_interests')
-                .select('music_favorite_artist, entertainment_favorite_movie, sports_favorite_sport, food_favorite_food, lifestyle_favorite_color, profile_completed')
-                .eq('user_id', user.id)
-                .maybeSingle();
+                .from('connections')
+                .select('id')
+                .eq('user2_id', user.id)
+                .eq('status', 'pending');
 
-            if (error && error.code !== 'PGRST116') {
-                console.error('Error loading interests:', error);
+            if (!error && data) {
+                setPendingRequestsCount(data.length);
             }
-
-            setUserInterests(data);
         } catch (error) {
-            console.error('Error loading interests:', error);
-        } finally {
-            setLoading(false);
+            console.error('Error loading pending requests:', error);
         }
-    };
-
-    const calculateProgress = () => {
-        if (!userInterests) return 0;
-
-        const fields = [
-            userInterests.music_favorite_artist,
-            userInterests.entertainment_favorite_movie,
-            userInterests.sports_favorite_sport,
-            userInterests.food_favorite_food,
-            userInterests.lifestyle_favorite_color,
-        ];
-
-        const completed = fields.filter(field => field !== null && field !== '').length;
-        return (completed / fields.length) * 100;
-    };
-
-    const questionnaires = [
-        {
-            id: 'music',
-            title: 'Música',
-            icon: 'musical-notes' as const,
-            completed: !!userInterests?.music_favorite_artist,
-            route: '/(onboarding)/music',
-        },
-        {
-            id: 'entertainment',
-            title: 'Entretenimiento',
-            icon: 'film' as const,
-            completed: !!userInterests?.entertainment_favorite_movie,
-            route: '/(onboarding)/entertainment',
-        },
-        {
-            id: 'sports',
-            title: 'Deportes',
-            icon: 'football' as const,
-            completed: !!userInterests?.sports_favorite_sport,
-            route: '/(onboarding)/sports',
-        },
-        {
-            id: 'food',
-            title: 'Comida',
-            icon: 'restaurant' as const,
-            completed: !!userInterests?.food_favorite_food,
-            route: '/(onboarding)/food',
-        },
-        {
-            id: 'lifestyle',
-            title: 'Estilo de Vida',
-            icon: 'heart' as const,
-            completed: !!userInterests?.lifestyle_favorite_color,
-            route: '/(onboarding)/lifestyle',
-        },
-    ];
-
-    const handleQuestionnairePress = (route: string) => {
-        router.push(route as any);
     };
 
     const handleSignOut = async () => {
@@ -278,10 +206,7 @@ export default function HomeScreen() {
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await Promise.all([
-            loadUserInterests(),
-            loadNearbyUsers(),
-        ]);
+        await loadNearbyUsers();
         setRefreshing(false);
     };
 
@@ -294,12 +219,10 @@ export default function HomeScreen() {
         console.log('Like a usuario:', userId);
     };
 
-    const progress = calculateProgress();
-    const isProfileComplete = progress === 100;
-
     const loadNearbyUsers = async () => {
         if (!user) return;
 
+        setLoading(true);
         try {
             // Obtener preferencias del usuario actual
             const { data: myPreferences } = await supabase
@@ -315,8 +238,8 @@ export default function HomeScreen() {
             let query = supabase
                 .from('users')
                 .select('id, name, avatar_url, gender, birth_date')
-                .neq('id', user.id)
-                .is('couple_id', null); // Solo usuarios solteros
+                .neq('id', user.id);
+            // Removido el filtro de couple_id para mostrar todos los usuarios
 
             // Aplicar filtro de género según preferencias
             if (lookingFor === 'male') {
@@ -330,29 +253,34 @@ export default function HomeScreen() {
 
             if (error) {
                 console.error('Error fetching users:', error);
+                setLoading(false);
                 return;
             }
 
             // Transformar datos a formato NearbyUser
-            const nearbyUsersData: NearbyUser[] = (usersData || []).map(u => ({
-                id: u.id,
-                name: u.name,
-                avatar_url: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&size=150`,
-                bio: null,
-                birth_date: u.birth_date,
-                gender: u.gender,
-                compatibility: Math.floor(Math.random() * 40) + 60, // TODO: Calcular compatibilidad real
-                interests: [], // TODO: Cargar intereses reales
-                distance: Math.floor(Math.random() * 50) + 1, // TODO: Calcular distancia real
-                is_online: Math.random() > 0.5, // TODO: Verificar estado online real
-                intention: undefined, // TODO: Cargar intención real
-            }));
+            const nearbyUsersData: NearbyUser[] = (usersData || []).map(u => {
+                return {
+                    id: u.id,
+                    name: u.name,
+                    avatar_url: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&size=150`,
+                    bio: null,
+                    birth_date: u.birth_date,
+                    gender: u.gender,
+                    compatibility: Math.floor(Math.random() * 40) + 60,
+                    interests: [],
+                    distance: Math.floor(Math.random() * 50) + 1,
+                    is_online: Math.random() > 0.5,
+                    intention: undefined,
+                };
+            });
 
             // Mezclar aleatoriamente
             const shuffled = nearbyUsersData.sort(() => Math.random() - 0.5);
             setNearbyUsers(shuffled);
         } catch (error) {
             console.error('Error loading nearby users:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -399,9 +327,24 @@ export default function HomeScreen() {
                             <Text style={styles.headerTitle}>Aura</Text>
                             <Ionicons name="flame" size={32} color="#FF6B9D" style={styles.headerFlame} />
                         </View>
-                        <Pressable onPress={() => setShowMenu(true)} style={styles.menuButton}>
-                            <Ionicons name="menu" size={28} color="#2D3748" />
-                        </Pressable>
+                        <View style={styles.headerActions}>
+                            <Pressable
+                                onPress={() => router.push('/(app)/connection-requests')}
+                                style={styles.notificationButton}
+                            >
+                                <Ionicons name="notifications" size={24} color="#2D3748" />
+                                {pendingRequestsCount > 0 && (
+                                    <View style={styles.badge}>
+                                        <Text style={styles.badgeText}>
+                                            {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Pressable>
+                            <Pressable onPress={() => setShowMenu(true)} style={styles.menuButton}>
+                                <Ionicons name="menu" size={28} color="#2D3748" />
+                            </Pressable>
+                        </View>
                     </View>
 
                     {/* Filtros de intención */}
@@ -475,92 +418,72 @@ export default function HomeScreen() {
                         </View>
                     ) : (
                         <>
-                            {!isProfileComplete && (
-                                <>
-                                    <ProfileProgressCard
-                                        progress={progress}
-                                        questionnaires={questionnaires}
-                                        onQuestionnairePress={handleQuestionnairePress}
-                                    />
-                                    <View style={styles.motivationCard}>
-                                        <Text style={styles.motivationEmoji}>✨</Text>
-                                        <Text style={styles.motivationText}>
-                                            Completa tu perfil para ver personas compatibles
-                                        </Text>
-                                    </View>
-                                </>
-                            )}
-
-                            {isProfileComplete && (
-                                <>
-                                    <Text style={{ padding: 20, fontSize: 14, color: '#666' }}>
-                                        Usuarios encontrados: {filteredUsers.length}
+                            <Text style={{ padding: 20, fontSize: 14, color: '#666' }}>
+                                Usuarios encontrados: {filteredUsers.length}
+                            </Text>
+                            {filteredUsers.length === 0 ? (
+                                <View style={styles.emptyFeed}>
+                                    <Text style={styles.emptyFeedEmoji}>🔍</Text>
+                                    <Text style={styles.emptyFeedTitle}>
+                                        No hay personas con esta intención
                                     </Text>
-                                    {filteredUsers.length === 0 ? (
-                                        <View style={styles.emptyFeed}>
-                                            <Text style={styles.emptyFeedEmoji}>🔍</Text>
-                                            <Text style={styles.emptyFeedTitle}>
-                                                No hay personas con esta intención
-                                            </Text>
-                                            <Text style={styles.emptyFeedSubtitle}>
-                                                Intenta con otro filtro
-                                            </Text>
-                                        </View>
-                                    ) : (
-                                        <ScrollView
-                                            horizontal
-                                            showsHorizontalScrollIndicator={false}
-                                            style={styles.bubblesScroll}
-                                        >
-                                            <View style={styles.bubblesContainer}>
-                                                {filteredUsers.map((user, index) => {
-                                                    const age = user.birth_date
-                                                        ? new Date().getFullYear() - new Date(user.birth_date).getFullYear()
-                                                        : undefined;
+                                    <Text style={styles.emptyFeedSubtitle}>
+                                        Intenta con otro filtro
+                                    </Text>
+                                </View>
+                            ) : (
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    style={styles.bubblesScroll}
+                                >
+                                    <View style={styles.bubblesContainer}>
+                                        {filteredUsers.map((user, index) => {
+                                            const age = user.birth_date
+                                                ? new Date().getFullYear() - new Date(user.birth_date).getFullYear()
+                                                : undefined;
 
-                                                    const baseSize = 50;
-                                                    const maxSize = 110;
-                                                    const bubbleSize = baseSize + ((user.compatibility / 100) * (maxSize - baseSize));
+                                            const baseSize = 50;
+                                            const maxSize = 110;
+                                            const bubbleSize = baseSize + ((user.compatibility / 100) * (maxSize - baseSize));
 
-                                                    // Distribución en grid con variación para evitar superposición
-                                                    const cols = 4;
-                                                    const spacing = 160;
-                                                    const col = index % cols;
-                                                    const row = Math.floor(index / cols);
+                                            // Distribución en grid con variación para evitar superposición
+                                            const cols = 4;
+                                            const spacing = 160;
+                                            const col = index % cols;
+                                            const row = Math.floor(index / cols);
 
-                                                    // Añadir variación aleatoria basada en el ID para que no sea tan rígido
-                                                    const seed = user.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                                                    const offsetX = ((seed * 17) % 30) - 15; // -15 a +15
-                                                    const offsetY = ((seed * 23) % 30) - 15; // -15 a +15
+                                            // Añadir variación aleatoria basada en el ID para que no sea tan rígido
+                                            const seed = user.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                                            const offsetX = ((seed * 17) % 30) - 15; // -15 a +15
+                                            const offsetY = ((seed * 23) % 30) - 15; // -15 a +15
 
-                                                    const position = {
-                                                        left: col * spacing + offsetX + 40,
-                                                        top: row * spacing + offsetY + 40,
-                                                    };
+                                            const position = {
+                                                left: col * spacing + offsetX + 40,
+                                                top: row * spacing + offsetY + 40,
+                                            };
 
-                                                    const borderColor = user.compatibility >= 90
-                                                        ? '#EC4899'
-                                                        : user.compatibility >= 80
-                                                            ? '#F59E0B'
-                                                            : user.compatibility >= 70
-                                                                ? '#10B981'
-                                                                : '#3B82F6';
+                                            const borderColor = user.compatibility >= 90
+                                                ? '#EC4899'
+                                                : user.compatibility >= 80
+                                                    ? '#F59E0B'
+                                                    : user.compatibility >= 70
+                                                        ? '#10B981'
+                                                        : '#3B82F6';
 
-                                                    return (
-                                                        <AnimatedBubble
-                                                            key={user.id}
-                                                            user={user}
-                                                            bubbleSize={bubbleSize}
-                                                            borderColor={borderColor}
-                                                            position={position}
-                                                            onPress={() => handleUserPress(user.id)}
-                                                        />
-                                                    );
-                                                })}
-                                            </View>
-                                        </ScrollView>
-                                    )}
-                                </>
+                                            return (
+                                                <AnimatedBubble
+                                                    key={user.id}
+                                                    user={user}
+                                                    bubbleSize={bubbleSize}
+                                                    borderColor={borderColor}
+                                                    position={position}
+                                                    onPress={() => handleUserPress(user.id)}
+                                                />
+                                            );
+                                        })}
+                                    </View>
+                                </ScrollView>
                             )}
                         </>
                     )}
@@ -579,22 +502,6 @@ export default function HomeScreen() {
                                 <Text style={styles.menuTitle}>Mi Perfil</Text>
                                 <Text style={styles.menuEmail}>{user?.email || 'Usuario'}</Text>
                             </View>
-
-                            <Pressable style={styles.menuItem} onPress={() => {
-                                setShowMenu(false);
-                                router.push('/(app)/profile');
-                            }}>
-                                <Ionicons name="person-circle-outline" size={28} color="#667eea" style={{ marginRight: 12 }} />
-                                <Text style={styles.menuItemText}>Ver Perfil Completo</Text>
-                            </Pressable>
-
-                            <Pressable style={styles.menuItem} onPress={() => {
-                                setShowMenu(false);
-                                router.push('/(app)/link-partner');
-                            }}>
-                                <Ionicons name="heart-circle-outline" size={28} color="#667eea" style={{ marginRight: 12 }} />
-                                <Text style={styles.menuItemText}>Vincular Pareja</Text>
-                            </Pressable>
 
                             <Pressable
                                 style={[styles.menuItem, styles.menuItemDanger]}
@@ -615,7 +522,7 @@ export default function HomeScreen() {
                         </Animated.View>
                     </Pressable>
                 </Modal>
-            </SafeAreaView >
+            </SafeAreaView>
 
             {/* Modal de perfil de usuario */}
             {selectedUserId && (
@@ -628,7 +535,7 @@ export default function HomeScreen() {
                     }}
                 />
             )}
-        </View >
+        </View>
     );
 }
 
@@ -677,6 +584,39 @@ const styles = StyleSheet.create({
     },
     headerFlame: {
         marginTop: 4,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    notificationButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    badge: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        backgroundColor: '#EF4444',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+        borderWidth: 2,
+        borderColor: '#FFF',
+    },
+    badgeText: {
+        color: '#FFF',
+        fontSize: 11,
+        fontWeight: '700',
     },
     headerSubtitle: {
         fontSize: 11,
@@ -728,26 +668,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#718096',
     },
-    motivationCard: {
-        backgroundColor: '#EEF2FF',
-        borderRadius: 16,
-        padding: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        marginHorizontal: 16,
-        marginTop: 16,
-    },
-    motivationEmoji: {
-        fontSize: 32,
-    },
-    motivationText: {
-        flex: 1,
-        fontSize: 14,
-        color: '#4C51BF',
-        lineHeight: 20,
-        fontWeight: '500',
-    },
     emptyFeed: {
         alignItems: 'center',
         paddingVertical: 60,
@@ -775,7 +695,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
     },
     bubblesContainer: {
-        height: 2000,
+        height: 1200,
         position: 'relative',
         width: 1000,
         paddingHorizontal: 20,

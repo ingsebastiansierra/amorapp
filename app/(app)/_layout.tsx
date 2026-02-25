@@ -8,28 +8,30 @@ import { useThemeStore } from '@/core/store/useThemeStore';
 import { supabase } from '@/core/config/supabase';
 import * as Haptics from 'expo-haptics';
 
-function MessagesTabIcon({ color, isSynced, focused }: { color: string; isSynced: boolean; focused: boolean }) {
+function MessagesTabIcon({ color, focused }: { color: string; focused: boolean }) {
     const { user } = useAuthStore();
     const [unreadCount, setUnreadCount] = useState(0);
+    const [hasConnections, setHasConnections] = useState(false);
 
     useEffect(() => {
         if (!user) return;
 
         const loadUnreadCount = async () => {
             try {
-                const { data: userData } = await supabase
-                    .from('users')
-                    .select('couple_id')
-                    .eq('id', user.id)
-                    .maybeSingle();
+                // Verificar si tiene conexiones activas
+                const { data: connections, error: connectionsError } = await supabase
+                    .from('connections')
+                    .select('id')
+                    .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+                    .eq('status', 'active')
+                    .limit(1);
 
-                if (!userData?.couple_id) return;
+                setHasConnections((connections?.length || 0) > 0);
 
-                // Contar mensajes de texto no leídos
+                // Contar mensajes de texto no leídos de TODAS las conexiones
                 const { data: textMessages } = await supabase
                     .from('sync_messages')
                     .select('id')
-                    .eq('couple_id', userData.couple_id)
                     .eq('to_user_id', user.id)
                     .eq('read', false);
 
@@ -40,7 +42,14 @@ function MessagesTabIcon({ color, isSynced, focused }: { color: string; isSynced
                     .eq('to_user_id', user.id)
                     .eq('viewed', false);
 
-                const total = (textMessages?.length || 0) + (images?.length || 0);
+                // Contar notas de voz no escuchadas
+                const { data: voiceNotes } = await supabase
+                    .from('voice_notes')
+                    .select('id')
+                    .eq('to_user_id', user.id)
+                    .eq('listened', false);
+
+                const total = (textMessages?.length || 0) + (images?.length || 0) + (voiceNotes?.length || 0);
                 setUnreadCount(total);
             } catch (error) {
                 console.error('Error loading unread count:', error);
@@ -49,9 +58,63 @@ function MessagesTabIcon({ color, isSynced, focused }: { color: string; isSynced
 
         loadUnreadCount();
 
-        // Actualizar cada 5 segundos
-        const interval = setInterval(loadUnreadCount, 5000);
-        return () => clearInterval(interval);
+        // Suscripción en tiempo real para actualizar el contador
+        const channel = supabase
+            .channel('unread-messages')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'sync_messages',
+                    filter: `to_user_id=eq.${user.id}`,
+                },
+                () => loadUnreadCount()
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'sync_messages',
+                    filter: `to_user_id=eq.${user.id}`,
+                },
+                () => loadUnreadCount()
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'images_private',
+                    filter: `to_user_id=eq.${user.id}`,
+                },
+                () => loadUnreadCount()
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'voice_notes',
+                    filter: `to_user_id=eq.${user.id}`,
+                },
+                () => loadUnreadCount()
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'connections',
+                },
+                () => loadUnreadCount()
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [user]);
 
     return (
@@ -59,14 +122,14 @@ function MessagesTabIcon({ color, isSynced, focused }: { color: string; isSynced
             <Ionicons
                 name={focused ? "chatbubbles" : "chatbubbles-outline"}
                 size={26}
-                color={focused ? '#FF6B9D' : (isSynced ? color : '#D1D5DB')}
+                color={focused ? '#FF6B9D' : (hasConnections ? color : '#D1D5DB')}
             />
-            {!isSynced && (
+            {!hasConnections && (
                 <View style={styles.lockBadge}>
                     <Ionicons name="lock-closed" size={10} color="#FFF" />
                 </View>
             )}
-            {unreadCount > 0 && isSynced && (
+            {unreadCount > 0 && hasConnections && (
                 <View style={styles.badge}>
                     <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
                 </View>
@@ -143,32 +206,18 @@ export default function AppLayout() {
                     title: 'Chats',
                     tabBarIcon: ({ color, focused }) => (
                         <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-                            <MessagesTabIcon color={color} isSynced={isSynced} focused={focused} />
+                            <MessagesTabIcon color={color} focused={focused} />
                         </View>
                     ),
-                    tabBarStyle: { display: 'none' },
-                }}
-                listeners={{
-                    tabPress: (e) => {
-                        if (!isSynced) {
-                            e.preventDefault();
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                            Alert.alert(
-                                '🔒 Mensajes Bloqueados',
-                                'Solo puedes enviar mensajes cuando ambos están sincronizados emocionalmente.\n\n✨ Actualiza tu estado para conectar con tu pareja.',
-                                [{ text: 'Entendido', style: 'default' }]
-                            );
-                        }
-                    },
                 }}
             />
             <Tabs.Screen
-                name="voice-notes"
+                name="edit-intention"
                 options={{
                     title: '',
                     tabBarIcon: ({ color, focused }) => (
                         <View style={[styles.centerButton, focused && styles.centerButtonActive]}>
-                            <Ionicons name="add" size={32} color="#FFF" />
+                            <Ionicons name="heart" size={32} color="#FFF" />
                         </View>
                     ),
                     tabBarLabel: () => null,
@@ -243,6 +292,31 @@ export default function AppLayout() {
                 name="preferences-settings"
                 options={{
                     href: null,
+                }}
+            />
+            <Tabs.Screen
+                name="voice-notes"
+                options={{
+                    href: null,
+                }}
+            />
+            <Tabs.Screen
+                name="connection-requests"
+                options={{
+                    href: null,
+                }}
+            />
+            <Tabs.Screen
+                name="components/UserProfileModal"
+                options={{
+                    href: null,
+                }}
+            />
+            <Tabs.Screen
+                name="chat/[id]"
+                options={{
+                    href: null,
+                    tabBarStyle: { display: 'none' },
                 }}
             />
         </Tabs>

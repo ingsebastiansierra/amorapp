@@ -202,12 +202,7 @@ export default function LoginScreen() {
 
                         {/* Password Input */}
                         <View style={styles.inputGroup}>
-                            <View style={styles.passwordHeader}>
-                                <Text style={styles.inputLabel}>Contraseña</Text>
-                                <Pressable onPress={() => setShowForgotPassword(true)}>
-                                    <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
-                                </Pressable>
-                            </View>
+                            <Text style={styles.inputLabel}>Contraseña</Text>
                             <View style={styles.inputContainer}>
                                 <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
                                 <TextInput
@@ -230,6 +225,12 @@ export default function LoginScreen() {
                                     />
                                 </Pressable>
                             </View>
+                            <Pressable
+                                onPress={() => setShowForgotPassword(true)}
+                                style={styles.forgotButton}
+                            >
+                                <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+                            </Pressable>
                         </View>
 
                         {/* Login Button */}
@@ -478,16 +479,14 @@ const styles = StyleSheet.create({
         color: '#4A5568',
         marginBottom: 8,
     },
-    passwordHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
+    forgotButton: {
+        alignSelf: 'flex-end',
+        marginTop: 8,
     },
     forgotText: {
         fontSize: 13,
-        color: '#667eea',
-        fontWeight: '500',
+        color: '#FF6B9D',
+        fontWeight: '600',
     },
     inputContainer: {
         flexDirection: 'row',

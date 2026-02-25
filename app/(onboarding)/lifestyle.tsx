@@ -40,7 +40,7 @@ export default function LifestyleScreen() {
             });
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            router.push('/(onboarding)/preferences');
+            router.back();
         } catch (error) {
             console.error('Error updating lifestyle interests:', error);
             Alert.alert('Error', 'No se pudo guardar tu información');
@@ -51,7 +51,7 @@ export default function LifestyleScreen() {
 
     const handleSkip = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push('/(onboarding)/preferences');
+        router.back();
     };
 
     const handleBack = () => {

@@ -41,7 +41,8 @@ export default function MusicScreen() {
             });
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            router.push('/(onboarding)/entertainment');
+            // Regresar a la pantalla de pre-registro
+            router.back();
         } catch (error) {
             console.error('Error updating music interests:', error);
             Alert.alert('Error', 'No se pudo guardar tu información');
@@ -52,7 +53,8 @@ export default function MusicScreen() {
 
     const handleSkip = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push('/(onboarding)/entertainment');
+        // Regresar a la pantalla de pre-registro
+        router.back();
     };
 
     const handleBack = () => {

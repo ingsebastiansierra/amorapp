@@ -136,6 +136,33 @@ export function UserProfileModal({ visible, userId, onClose }: UserProfileModalP
 
             if (error) throw error;
 
+            // Enviar notificación push al receptor
+            try {
+                const { data: recipientData } = await supabase
+                    .from('users')
+                    .select('push_token')
+                    .eq('id', userId)
+                    .single();
+
+                const { data: senderData } = await supabase
+                    .from('users')
+                    .select('name, gender')
+                    .eq('id', user.id)
+                    .single();
+
+                if (recipientData?.push_token && senderData) {
+                    const { notificationService } = await import('@/core/services/notificationService');
+                    await notificationService.sendConnectionRequestNotification(
+                        recipientData.push_token,
+                        senderData.name,
+                        senderData.gender
+                    );
+                }
+            } catch (notifError) {
+                console.error('Error sending notification:', notifError);
+                // No fallar si la notificación falla
+            }
+
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             Alert.alert(
                 '¡Solicitud Enviada!',
@@ -410,3 +437,5 @@ const styles = StyleSheet.create({
         color: '#6B7280',
     },
 });
+
+export default UserProfileModal;

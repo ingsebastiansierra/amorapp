@@ -43,7 +43,7 @@ class CleanupService {
         await this.deleteStorageFiles('private-images', result.image_storage_paths);
       }
 
-      console.log('🧹 Limpieza completada:', result);
+      // console.log('🧹 Limpieza completada:', result);
       return result;
     } catch (error) {
       console.error('Error en limpieza automática:', error);

@@ -42,7 +42,7 @@ export default function SportsScreen() {
             });
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            router.push('/(onboarding)/food');
+            router.back();
         } catch (error) {
             console.error('Error updating sports interests:', error);
             Alert.alert('Error', 'No se pudo guardar tu información');
@@ -53,7 +53,7 @@ export default function SportsScreen() {
 
     const handleSkip = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push('/(onboarding)/food');
+        router.back();
     };
 
     const handleBack = () => {

@@ -55,7 +55,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         theme: theme,
       });
       
-      console.log('✅ Tema cambiado a:', theme.name);
+      // console.log('✅ Tema cambiado a:', theme.name);
     } catch (error) {
       console.error('❌ Error guardando tema:', error);
       throw error;
@@ -92,7 +92,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
           currentTheme: themeId,
           theme: theme,
         });
-        console.log('✅ Tema cargado:', theme.name);
+        // console.log('✅ Tema cargado:', theme.name);
       }
     } catch (error) {
       console.error('❌ Error cargando tema:', error);
@@ -132,7 +132,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       
       set({ unlockedThemes: newUnlockedThemes });
       
-      console.log(`✅ Tema "${THEMES[themeId].name}" desbloqueado por 24 horas`);
+      // console.log(`✅ Tema "${THEMES[themeId].name}" desbloqueado por 24 horas`);
     } catch (error) {
       console.error('❌ Error desbloqueando tema:', error);
     }
@@ -169,7 +169,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         set({ unlockedThemes: validThemes });
         
         validThemes.forEach(t => {
-          console.log(`✅ Tema "${THEMES[t.themeId].name}" desbloqueado hasta`, new Date(t.expiresAt).toLocaleString());
+          // console.log(`✅ Tema "${THEMES[t.themeId].name}" desbloqueado hasta`, new Date(t.expiresAt).toLocaleString());
         });
       }
     } catch (error) {

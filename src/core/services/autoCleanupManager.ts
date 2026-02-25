@@ -11,11 +11,11 @@ class AutoCleanupManager {
    */
   start(intervalMinutes: number = 60, daysToKeep: number = 7) {
     if (this.isRunning) {
-      console.log('⚠️ Limpieza automática ya está en ejecución');
+      // console.log('⚠️ Limpieza automática ya está en ejecución');
       return;
     }
 
-    console.log(`🧹 Iniciando limpieza automática (cada ${intervalMinutes} min, mantener ${daysToKeep} días)`);
+    // console.log(`🧹 Iniciando limpieza automática (cada ${intervalMinutes} min, mantener ${daysToKeep} días)`);
     
     // Ejecutar inmediatamente
     this.performCleanup(daysToKeep);
@@ -37,7 +37,7 @@ class AutoCleanupManager {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
       this.isRunning = false;
-      console.log('🛑 Limpieza automática detenida');
+      // console.log('🛑 Limpieza automática detenida');
     }
   }
 
