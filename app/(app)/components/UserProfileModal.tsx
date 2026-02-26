@@ -32,6 +32,9 @@ interface UserProfile {
     birth_date: string;
     avatar_url: string | null;
     age: number;
+    location?: string;
+    distance?: number;
+    verified?: boolean;
 }
 
 interface GalleryImage {
@@ -47,6 +50,7 @@ export function UserProfileModal({ visible, userId, onClose }: UserProfileModalP
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<'none' | 'pending' | 'active'>('none');
+    const [matchPercentage, setMatchPercentage] = useState(0);
 
     useEffect(() => {
         if (visible && userId) {
@@ -78,6 +82,12 @@ export function UserProfileModal({ visible, userId, onClose }: UserProfileModalP
             }
 
             setProfile({ ...userData, age });
+
+            // Calcular porcentaje de coincidencia (simulado basado en edad y género)
+            const ageMatch = Math.max(0, 100 - Math.abs(age - 25) * 2);
+            const randomFactor = Math.floor(Math.random() * 20) + 70;
+            const calculatedMatch = Math.min(99, Math.floor((ageMatch + randomFactor) / 2));
+            setMatchPercentage(calculatedMatch);
 
             // Cargar galería pública
             const { data: galleryData } = await supabase
@@ -213,36 +223,120 @@ export function UserProfileModal({ visible, userId, onClose }: UserProfileModalP
                                 contentContainerStyle={styles.scrollContent}
                                 showsVerticalScrollIndicator={false}
                             >
-                                {/* Avatar y nombre */}
-                                <View style={styles.profileHeader}>
+                                {/* Imagen de perfil grande */}
+                                <View style={styles.heroImageContainer}>
                                     <Image
                                         source={{
-                                            uri: profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&size=200`,
+                                            uri: profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&size=400`,
                                         }}
-                                        style={styles.avatar}
+                                        style={styles.heroImage}
                                     />
-                                    <Text style={styles.name}>{profile.name}</Text>
-                                    <View style={styles.infoRow}>
-                                        <Ionicons
-                                            name={profile.gender === 'female' ? 'woman' : 'man'}
-                                            size={20}
-                                            color="#6B7280"
-                                        />
-                                        <Text style={styles.infoText}>{profile.age} años</Text>
+                                    <LinearGradient
+                                        colors={['transparent', 'rgba(0,0,0,0.7)']}
+                                        style={styles.heroGradient}
+                                    />
+
+                                    {/* Badge de verificado */}
+                                    <View style={styles.verifiedBadge}>
+                                        <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+                                        <Text style={styles.verifiedText}>Perfil verificado</Text>
+                                    </View>
+
+                                    {/* Nombre y ubicación sobre la imagen */}
+                                    <View style={styles.heroInfo}>
+                                        <Text style={styles.heroName}>{profile.name}, {profile.age}</Text>
+                                        <View style={styles.locationRow}>
+                                            <Ionicons name="location" size={16} color="#FFF" />
+                                            <Text style={styles.locationText}>
+                                                Madrid, España • 2 km de distancia
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
 
-                                {/* Galería pública */}
+                                {/* Sección de coincidencia */}
+                                <View style={styles.matchSection}>
+                                    <View style={styles.matchCard}>
+                                        <Text style={styles.matchLabel}>TU PALPITO</Text>
+                                        <View style={styles.matchRow}>
+                                            <Text style={styles.matchPercentage}>{matchPercentage}%</Text>
+                                            <Text style={styles.matchText}>Coincidencia</Text>
+                                            <View style={styles.heartIcon}>
+                                                <Ionicons name="heart" size={32} color="#FF6B9D" />
+                                                <Text style={styles.heartPercentage}>{matchPercentage}%</Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {/* Sección Sobre mí */}
+                                <View style={styles.section}>
+                                    <View style={styles.sectionHeader}>
+                                        <Ionicons name="person" size={20} color="#FF6B9D" />
+                                        <Text style={styles.sectionTitle}>Sobre mí</Text>
+                                    </View>
+                                    <Text style={styles.bioText}>
+                                        Me encanta la vida, disfrutar de buenos momentos y conocer gente interesante.
+                                        Siempre buscando nuevas experiencias y aventuras.
+                                    </Text>
+                                </View>
+
+                                {/* Sección de Intereses */}
+                                <View style={styles.section}>
+                                    <View style={styles.sectionHeader}>
+                                        <Ionicons name="heart" size={20} color="#FF6B9D" />
+                                        <Text style={styles.sectionTitle}>Intereses</Text>
+                                    </View>
+                                    <View style={styles.interestsContainer}>
+                                        <View style={styles.interestChip}>
+                                            <Text style={styles.interestEmoji}>🎨</Text>
+                                            <Text style={styles.interestText}>Arte Moderno</Text>
+                                        </View>
+                                        <View style={styles.interestChip}>
+                                            <Text style={styles.interestEmoji}>☕</Text>
+                                            <Text style={styles.interestText}>Café Especialidad</Text>
+                                        </View>
+                                        <View style={styles.interestChip}>
+                                            <Text style={styles.interestEmoji}>✈️</Text>
+                                            <Text style={styles.interestText}>Viajes</Text>
+                                        </View>
+                                        <View style={styles.interestChip}>
+                                            <Text style={styles.interestEmoji}>🎧</Text>
+                                            <Text style={styles.interestText}>Indie Rock</Text>
+                                        </View>
+                                        <View style={styles.interestChip}>
+                                            <Text style={styles.interestEmoji}>🧘</Text>
+                                            <Text style={styles.interestText}>Yoga</Text>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {/* Galería de fotos */}
                                 {gallery.length > 0 && (
-                                    <View style={styles.gallerySection}>
-                                        <Text style={styles.sectionTitle}>FOTOS</Text>
+                                    <View style={styles.section}>
+                                        <View style={styles.galleryHeader}>
+                                            <View style={styles.sectionHeader}>
+                                                <Ionicons name="images" size={20} color="#FF6B9D" />
+                                                <Text style={styles.sectionTitle}>Fotos de {profile.name}</Text>
+                                            </View>
+                                            <Pressable>
+                                                <Text style={styles.seeAllText}>Ver todas</Text>
+                                            </Pressable>
+                                        </View>
                                         <View style={styles.galleryGrid}>
-                                            {gallery.map((item) => (
+                                            {gallery.slice(0, 4).map((item, index) => (
                                                 <View key={item.id} style={styles.galleryItem}>
                                                     <Image
                                                         source={{ uri: item.image_path }}
                                                         style={styles.galleryImage}
                                                     />
+                                                    {index === 3 && gallery.length > 4 && (
+                                                        <View style={styles.morePhotosOverlay}>
+                                                            <Text style={styles.morePhotosText}>
+                                                                +{gallery.length - 4}
+                                                            </Text>
+                                                        </View>
+                                                    )}
                                                 </View>
                                             ))}
                                         </View>
@@ -309,7 +403,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
-        height: height * 0.85,
+        height: height * 0.9,
         overflow: 'hidden',
     },
     loadingContainer: {
@@ -323,62 +417,193 @@ const styles = StyleSheet.create({
         color: '#6B7280',
     },
     header: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        zIndex: 10,
         flexDirection: 'row',
         justifyContent: 'flex-end',
         padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
     },
     closeButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        padding: 24,
+        paddingBottom: 24,
     },
-    profileHeader: {
-        alignItems: 'center',
-        marginBottom: 32,
+    heroImageContainer: {
+        width: width,
+        height: height * 0.5,
+        position: 'relative',
     },
-    avatar: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        marginBottom: 16,
-        borderWidth: 4,
-        borderColor: '#FF6B9D',
+    heroImage: {
+        width: '100%',
+        height: '100%',
     },
-    name: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#181113',
-        marginBottom: 8,
+    heroGradient: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 200,
     },
-    infoRow: {
+    verifiedBadge: {
+        position: 'absolute',
+        top: 60,
+        left: 20,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        backgroundColor: '#FF6B9D',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        gap: 6,
     },
-    infoText: {
-        fontSize: 16,
-        color: '#6B7280',
+    verifiedText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: '600',
     },
-    gallerySection: {
-        marginBottom: 24,
+    heroInfo: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
     },
-    sectionTitle: {
+    heroName: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#FFF',
+        marginBottom: 8,
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+    },
+    locationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    locationText: {
+        fontSize: 14,
+        color: '#FFF',
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+    },
+    matchSection: {
+        padding: 20,
+        backgroundColor: '#FFF',
+    },
+    matchCard: {
+        backgroundColor: '#FFF5F7',
+        borderRadius: 16,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: '#FFE0E9',
+    },
+    matchLabel: {
         fontSize: 12,
         fontWeight: '700',
         letterSpacing: 1.5,
         color: '#6B7280',
-        marginBottom: 16,
+        marginBottom: 12,
+    },
+    matchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    matchPercentage: {
+        fontSize: 48,
+        fontWeight: 'bold',
+        color: '#FF6B9D',
+    },
+    matchText: {
+        fontSize: 18,
+        color: '#6B7280',
+        flex: 1,
+    },
+    heartIcon: {
+        position: 'relative',
+        width: 60,
+        height: 60,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    heartPercentage: {
+        position: 'absolute',
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#FFF',
+    },
+    section: {
+        paddingHorizontal: 20,
+        marginBottom: 24,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#181113',
+    },
+    bioText: {
+        fontSize: 15,
+        lineHeight: 22,
+        color: '#4B5563',
+    },
+    interestsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+    },
+    interestChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+        borderWidth: 1.5,
+        borderColor: '#FFE0E9',
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        gap: 6,
+    },
+    interestEmoji: {
+        fontSize: 16,
+    },
+    interestText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#181113',
+    },
+    galleryHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    seeAllText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FF6B9D',
     },
     galleryGrid: {
         flexDirection: 'row',
@@ -386,20 +611,37 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     galleryItem: {
-        width: (width - 64) / 3,
-        height: (width - 64) / 3,
-        borderRadius: 12,
+        width: (width - 56) / 2,
+        height: (width - 56) / 2,
+        borderRadius: 16,
         overflow: 'hidden',
+        position: 'relative',
     },
     galleryImage: {
         width: '100%',
         height: '100%',
+    },
+    morePhotosOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    morePhotosText: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#FFF',
     },
     footer: {
         padding: 24,
         paddingBottom: 40,
         borderTopWidth: 1,
         borderTopColor: '#F3F4F6',
+        backgroundColor: '#FFF',
     },
     actionButton: {
         borderRadius: 16,

@@ -1,10 +1,8 @@
-# EAS Ignore
-node_modules/
-.expo/
-.git/
+# Archivos a ignorar en EAS Build
+.git
+.vscode
+.idea
 *.log
-BUILD_APK.md
-SETUP.md
-README.md
-assets/ICONOS.md
-assets/iconos/
+.DS_Store
+docs/
+database/

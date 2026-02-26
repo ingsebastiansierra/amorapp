@@ -8,6 +8,9 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "cache": {
+        "disabled": true
       }
     },
     "preview": {
@@ -15,21 +18,30 @@
         "buildType": "apk"
       },
       "channel": "preview",
-      "distribution": "internal"
+      "distribution": "internal",
+      "cache": {
+        "disabled": true
+      }
     },
     "production": {
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
       },
-      "channel": "production"
+      "channel": "production",
+      "cache": {
+        "disabled": true
+      }
     },
     "production-aab": {
       "android": {
         "buildType": "app-bundle",
         "gradleCommand": ":app:bundleRelease"
       },
-      "channel": "production"
+      "channel": "production",
+      "cache": {
+        "disabled": true
+      }
     }
   },
   "submit": {
