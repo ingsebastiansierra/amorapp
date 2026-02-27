@@ -57,8 +57,8 @@ export function PersonalGalleryScreen() {
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
 
-    // Anuncio intersticial
-    const { showAd, isLoaded, showFallbackModal, closeFallback } = useSmartInterstitialAd();
+    // Anuncio intersticial (deshabilitado temporalmente)
+    const { showAd, isLoaded } = useSmartInterstitialAd();
 
     // Rate limiting para subida de imágenes
     const { checkLimit: checkUploadLimit } = useRateLimit({
@@ -721,11 +721,11 @@ export function PersonalGalleryScreen() {
                 </Pressable>
             </Modal>
 
-            {/* Fallback Modal para anuncios intersticiales */}
-            <InterstitialFallbackModal
-                visible={showFallbackModal}
-                onClose={closeFallback}
-            />
+            {/* Fallback Modal para anuncios intersticiales - DESHABILITADO */}
+            {/* <InterstitialFallbackModal
+                visible={false}
+                onClose={() => {}}
+            /> */}
         </View>
     );
 }

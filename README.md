@@ -1,62 +1,75 @@
-# Couple Connection App 💕
+# 🔥 Palpitos - App de Chat y Sentimientos
 
-App móvil exclusiva para parejas enfocada en conexión emocional, micro-interacciones y rituales diarios.
+App de chat privado para parejas con funcionalidades de mensajería, compartir fotos y expresar sentimientos.
 
-## Stack Tecnológico
+## 🚀 Inicio Rápido
 
-- **Frontend**: Expo + React Native + TypeScript
-- **Animaciones**: Reanimated, Gesture Handler, Moti, Lottie
-- **Backend**: Supabase (Auth, Realtime, Storage, PostgreSQL)
+### Instalación
+```bash
+npm install
+```
+
+### Desarrollo
+```bash
+npm start
+```
+
+### Build de Producción
+```bash
+# APK para distribución directa
+npm run build:production
+
+# AAB para Google Play Store
+npm run build:production-aab
+```
+
+## 📱 Comandos Disponibles
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm start` | Inicia el servidor de desarrollo |
+| `npm run dev` | Inicia con dev client |
+| `npm run android` | Ejecuta en Android |
+| `npm run clean` | Limpia caché y archivos temporales |
+| `npm run estimate-size` | Estima el tamaño del APK final |
+| `npm run build:dev-apk` | Build de desarrollo |
+| `npm run build:production` | Build de producción (APK) |
+| `npm run build:production-aab` | Build para Play Store (AAB) |
+
+## 🛠️ Stack Tecnológico
+
+- **Framework**: React Native + Expo
+- **Routing**: Expo Router
+- **Backend**: Supabase
 - **Notificaciones**: Expo Notifications
+- **Animaciones**: React Native Reanimated
 - **Estado**: Zustand
 
-## Características Principales
+## 📦 Tamaño de la App
 
-✨ Estados emocionales en tiempo real
-❤️ Corazones interactivos con presión
-🎭 Comunicación sin texto (emocional)
-📸 Imágenes íntimas y efímeras
-🎯 Retos diarios de pareja
-😡 Modo pelea inteligente
-📊 Indicador de conexión emocional
-📅 Historial emocional privado
+- **APK**: ~22 MB
+- **Instalado**: ~48 MB
 
-## Instalación
+Ver análisis completo: `npm run estimate-size`
 
-```bash
-# Instalar dependencias
-npm install
+## 🔧 Configuración
 
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus credenciales de Supabase
+### Variables de Entorno
+Copia `.env.example` a `.env` y configura:
+- Credenciales de Supabase
+- Configuración de Firebase (opcional)
 
-# Iniciar en Android
-npm run android
-```
+### Credenciales de Build
+Las credenciales están gestionadas por EAS Build en la nube.
 
-## Configuración de Supabase
+## 📄 Documentación Adicional
 
-1. Crear proyecto en Supabase
-2. Ejecutar migraciones en `supabase/migrations/`
-3. Configurar Storage bucket privado para imágenes
-4. Copiar URL y anon key a `.env`
+- [OPTIMIZACIONES.md](./OPTIMIZACIONES.md) - Optimizaciones de tamaño y rendimiento
 
-## Estructura del Proyecto
+## 👥 Equipo
 
-```
-src/
-├── core/           # Configuración, tipos, stores
-├── features/       # Pantallas por funcionalidad
-└── shared/         # Componentes reutilizables
-```
+Desarrollado por @sebasing04
 
-## Próximos Pasos
+## 📝 Licencia
 
-- [ ] Implementar sistema de notificaciones contextuales
-- [ ] Agregar animaciones Lottie para estados emocionales
-- [ ] Crear sistema de retos diarios
-- [ ] Implementar modo pelea inteligente
-- [ ] Agregar indicador de conexión emocional
-- [ ] Sistema de imágenes efímeras
-- [ ] Historial emocional con timeline visual
+Privado

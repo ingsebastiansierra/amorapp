@@ -1,11 +1,7 @@
-import { useEffect, useState } from 'react';
-import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
-
+// ⚠️ ADMOB DESHABILITADO - Hook dummy
 export const useBannerAd = () => {
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  return {
-    isLoaded,
-    BannerAdSize,
-  };
+    return {
+        isLoaded: false,
+        error: null,
+    };
 };

@@ -1,3 +1,12 @@
+// ⚠️ ADMOB DESHABILITADO - Componente dummy
+import React from 'react';
+
+export const HomeBannerAd = () => {
+    // No renderiza nada mientras AdMob está deshabilitado
+    return null;
+};
+
+/* VERSIÓN ORIGINAL (RESTAURAR CUANDO SE HABILITE ADMOB)
 import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
@@ -12,12 +21,6 @@ export const HomeBannerAd = () => {
                 requestOptions={{
                     requestNonPersonalizedAdsOnly: false,
                 }}
-                onAdLoaded={() => {
-                    console.log('✅ Banner ad loaded');
-                }}
-                onAdFailedToLoad={(error) => {
-                    console.log('❌ Banner ad failed to load:', error);
-                }}
             />
         </View>
     );
@@ -26,9 +29,7 @@ export const HomeBannerAd = () => {
 const styles = StyleSheet.create({
     container: {
         alignItems: 'center',
-        backgroundColor: '#FFF',
-        paddingVertical: 8,
-        borderTopWidth: 1,
-        borderTopColor: '#F3F4F6',
+        marginVertical: 10,
     },
 });
+*/

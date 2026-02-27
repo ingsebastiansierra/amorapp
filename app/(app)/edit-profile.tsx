@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/core/store/useAuthStore';
 import { supabase } from '@/core/config/supabase';
+import { avatarService } from '@/core/services/avatarService';
 
 export default function EditProfileScreen() {
     const { user } = useAuthStore();
     const router = useRouter();
     const [name, setName] = useState('');
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [newAvatarUri, setNewAvatarUri] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [canChangeName, setCanChangeName] = useState(true);
     const [daysUntilChange, setDaysUntilChange] = useState(0);
     const [lastNameChange, setLastNameChange] = useState<Date | null>(null);
@@ -26,7 +33,7 @@ export default function EditProfileScreen() {
         try {
             const { data, error } = await supabase
                 .from('users')
-                .select('name, last_name_change')
+                .select('name, avatar_url, last_name_change')
                 .eq('id', user.id)
                 .maybeSingle();
 
@@ -34,6 +41,7 @@ export default function EditProfileScreen() {
 
             if (data) {
                 setName(data.name);
+                setAvatarUrl(data.avatar_url);
 
                 // Si last_name_change es NULL, es la primera vez que puede cambiar el nombre
                 if (data.last_name_change === null) {
@@ -65,6 +73,64 @@ export default function EditProfileScreen() {
         }
     };
 
+    const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (status !== 'granted') {
+            Alert.alert('Permiso denegado', 'Necesitamos acceso a tu galería');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            setNewAvatarUri(result.assets[0].uri);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+    };
+
+    const uploadAvatar = async (): Promise<string | null> => {
+        if (!newAvatarUri || !user) return null;
+
+        try {
+            setUploadingAvatar(true);
+
+            const fileExt = newAvatarUri.split('.').pop();
+            const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+            // Convertir URI a blob
+            const response = await fetch(newAvatarUri);
+            const blob = await response.blob();
+
+            // Eliminar avatar anterior si existe
+            if (avatarUrl) {
+                await supabase.storage.from('avatars').remove([avatarUrl]);
+            }
+
+            // Subir nuevo avatar
+            const { data, error } = await supabase.storage
+                .from('avatars')
+                .upload(fileName, blob, {
+                    contentType: `image/${fileExt}`,
+                    upsert: false,
+                });
+
+            if (error) throw error;
+
+            return fileName;
+        } catch (error) {
+            console.error('Error uploading avatar:', error);
+            throw error;
+        } finally {
+            setUploadingAvatar(false);
+        }
+    };
+
     const handleSave = async () => {
         if (!user) return;
 
@@ -89,16 +155,38 @@ export default function EditProfileScreen() {
         try {
             setSaving(true);
 
+            // Subir avatar si hay uno nuevo
+            let newAvatarUrl = avatarUrl;
+            if (newAvatarUri) {
+                newAvatarUrl = await uploadAvatar();
+            }
+
+            const updateData: any = {};
+
+            // Solo actualizar nombre si cambió y puede cambiarlo
+            if (name.trim() !== '' && canChangeName) {
+                updateData.name = name.trim();
+                updateData.last_name_change = new Date().toISOString();
+            }
+
+            // Actualizar avatar si cambió
+            if (newAvatarUrl !== avatarUrl) {
+                updateData.avatar_url = newAvatarUrl;
+            }
+
+            if (Object.keys(updateData).length === 0) {
+                Alert.alert('Sin cambios', 'No hay cambios para guardar');
+                return;
+            }
+
             const { error } = await supabase
                 .from('users')
-                .update({
-                    name: name.trim(),
-                    last_name_change: new Date().toISOString(),
-                })
+                .update(updateData)
                 .eq('id', user.id);
 
             if (error) throw error;
 
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             Alert.alert('¡Listo!', 'Tu perfil se actualizó correctamente', [
                 {
                     text: 'OK',
@@ -143,6 +231,28 @@ export default function EditProfileScreen() {
 
                     {/* Formulario */}
                     <View style={styles.form}>
+                        {/* Avatar */}
+                        <View style={styles.avatarSection}>
+                            <Pressable onPress={pickImage} style={styles.avatarContainer}>
+                                {newAvatarUri || avatarUrl ? (
+                                    <Image
+                                        source={{ 
+                                            uri: newAvatarUri || avatarService.getAvatarUrl(avatarUrl!) || undefined 
+                                        }}
+                                        style={styles.avatar}
+                                    />
+                                ) : (
+                                    <View style={styles.avatarPlaceholder}>
+                                        <Ionicons name="person" size={60} color="#667eea" />
+                                    </View>
+                                )}
+                                <View style={styles.avatarEditBadge}>
+                                    <Ionicons name="camera" size={20} color="#FFF" />
+                                </View>
+                            </Pressable>
+                            <Text style={styles.avatarHint}>Toca para cambiar tu foto</Text>
+                        </View>
+
                         <View style={styles.inputContainer}>
                             <Text style={styles.label}>Nombre</Text>
                             <TextInput
@@ -200,12 +310,12 @@ export default function EditProfileScreen() {
                         <Pressable
                             style={[
                                 styles.saveButton,
-                                (!canChangeName || saving) && styles.saveButtonDisabled
+                                (saving || uploadingAvatar) && styles.saveButtonDisabled
                             ]}
                             onPress={handleSave}
-                            disabled={!canChangeName || saving}
+                            disabled={saving || uploadingAvatar}
                         >
-                            {saving ? (
+                            {(saving || uploadingAvatar) ? (
                                 <ActivityIndicator color="#FFF" />
                             ) : (
                                 <Text style={styles.saveButtonText}>
@@ -259,6 +369,49 @@ const styles = StyleSheet.create({
     },
     form: {
         flex: 1,
+    },
+    avatarSection: {
+        alignItems: 'center',
+        marginBottom: 32,
+    },
+    avatarContainer: {
+        position: 'relative',
+        marginBottom: 12,
+    },
+    avatar: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        borderWidth: 4,
+        borderColor: '#FFF',
+    },
+    avatarPlaceholder: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: '#FFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 4,
+        borderColor: '#FFF',
+    },
+    avatarEditBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#667eea',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 3,
+        borderColor: '#FFF',
+    },
+    avatarHint: {
+        fontSize: 14,
+        color: '#FFF',
+        opacity: 0.8,
     },
     inputContainer: {
         marginBottom: 24,

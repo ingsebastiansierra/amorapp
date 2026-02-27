@@ -1,8 +1,93 @@
-# Archivos a ignorar en EAS Build
-.git
-.vscode
-.idea
+# ============================================
+# OPTIMIZACIÓN DE TAMAÑO PARA EAS BUILD
+# ============================================
+
+# Control de versiones
+.git/
+.gitignore
+.gitattributes
+
+# IDEs y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs y temporales
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 .DS_Store
+Thumbs.db
+
+# Documentación (no necesaria para build)
 docs/
+*.md
+!README.md
+ADMOB_*.md
+BUILD_*.md
+DEV_*.md
+FIREBASE_*.md
+READY_TO_BUILD.md
+
+# Base de datos local (no necesaria para build)
 database/
+*.sql
+*.db
+*.sqlite
+
+# Scripts de desarrollo (no necesarios para build)
+scripts/
+!scripts/postinstall.js
+
+# Archivos de prueba
+__tests__/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Caché y builds locales
+.expo/
+.expo-shared/
+dist/
+build/
+*.tsbuildinfo
+
+# Android builds locales (EAS los genera)
+android/.gradle/
+android/.idea/
+android/app/build/
+android/app/.cxx/
+android/build/
+android/local.properties
+# NO excluir gradlew - EAS lo necesita
+
+# iOS (si no lo usas)
+ios/
+
+# Archivos grandes innecesarios
+*.mp4
+*.mov
+*.avi
+*.zip
+*.tar.gz
+*.rar
+
+# Node modules pesados que se reinstalan
+node_modules/@expo/
+node_modules/.cache/
+node_modules/.bin/
+
+# Archivos de configuración local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Otros
+coverage/
+.nyc_output/
+*.orig

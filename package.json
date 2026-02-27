@@ -5,9 +5,19 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
+    "android:device": "expo run:android --device",
+    "android:prebuild": "expo prebuild --platform android --clean",
+    "android:clean": "cd android && gradlew clean && cd ..",
+    "clean": "node scripts/clean-project.js",
+    "estimate-size": "node scripts/estimate-apk-size.js",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "postinstall": "patch-package || true"
+    "dev": "expo start --dev-client",
+    "build:dev-apk": "node scripts/build-dev-apk.js",
+    "build:production": "node scripts/build-production.js",
+    "build:production-aab": "node scripts/build-production-aab.js",
+    "build:apk": "cd android && gradlew assembleDebug && cd ..",
+    "install:apk": "adb install android/app/build/outputs/apk/debug/app-debug.apk"
   },
   "dependencies": {
     "@craftzdog/react-native-buffer": "^6.1.1",
@@ -44,7 +54,6 @@
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-get-random-values": "~1.11.0",
-    "react-native-google-mobile-ads": "^16.0.3",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",

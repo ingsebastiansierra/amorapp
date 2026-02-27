@@ -860,7 +860,7 @@ export default function MessagesScreen() {
                                                 styles.quotedMessageText,
                                                 isFromMe ? styles.quotedMessageTextMe : styles.quotedMessageTextPartner
                                             ]}
-                                            numberOfLines={2}
+                                            numberOfLines={3}
                                         >
                                             {msg.replied_message.type === 'voice' ? '­ƒÄñ Nota de voz' :
                                                 msg.replied_message.type === 'image' ? '­ƒôÀ Imagen' :
@@ -1662,8 +1662,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginBottom: 8,
         borderRadius: 8,
-        padding: 8,
-        gap: 8,
+        padding: 10,
+        gap: 10,
+        maxWidth: '85%',
     },
     quotedMessagePartner: {
         backgroundColor: 'rgba(0, 0, 0, 0.05)',
@@ -1683,11 +1684,12 @@ const styles = StyleSheet.create({
     },
     quotedMessageContent: {
         flex: 1,
+        minHeight: 40,
     },
     quotedMessageName: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '600',
-        marginBottom: 2,
+        marginBottom: 4,
     },
     quotedMessageNamePartner: {
         color: '#667eea',
@@ -1696,7 +1698,8 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.9)',
     },
     quotedMessageText: {
-        fontSize: 13,
+        fontSize: 14,
+        lineHeight: 20,
     },
     quotedMessageTextPartner: {
         color: '#6B7280',

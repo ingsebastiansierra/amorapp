@@ -26,6 +26,8 @@ export default function ChatsListScreen() {
     const [connections, setConnections] = useState<Connection[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [selectedChats, setSelectedChats] = useState<Set<string>>(new Set());
+    const [selectionMode, setSelectionMode] = useState(false);
 
     useEffect(() => {
         loadConnections();
@@ -73,11 +75,29 @@ export default function ChatsListScreen() {
                     const otherUser = isUser1 ? conn.user2 : conn.user1;
                     const otherUserId = isUser1 ? conn.user2_id : conn.user1_id;
 
-                    // Obtener el último mensaje (si existe)
-                    // Por ahora lo dejamos null, puedes implementar esto después
-                    const last_message = null;
-                    const last_message_time = null;
-                    const unread_count = 0;
+                    // Obtener el último mensaje entre estos dos usuarios
+                    const { data: lastMessageData } = await supabase
+                        .from('sync_messages')
+                        .select('message, created_at, from_user_id')
+                        .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${otherUserId}),and(from_user_id.eq.${otherUserId},to_user_id.eq.${user.id})`)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+
+                    // Obtener mensajes no leídos
+                    const { count: unreadCount } = await supabase
+                        .from('sync_messages')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('to_user_id', user.id)
+                        .eq('from_user_id', otherUserId)
+                        .eq('read', false);
+
+                    let last_message = null;
+                    if (lastMessageData) {
+                        // Agregar "Tú: " si el mensaje fue enviado por ti
+                        const prefix = lastMessageData.from_user_id === user.id ? 'Tú: ' : '';
+                        last_message = prefix + lastMessageData.message;
+                    }
 
                     return {
                         id: conn.id,
@@ -86,11 +106,18 @@ export default function ChatsListScreen() {
                         user_avatar: otherUser?.avatar_url || null,
                         user_gender: otherUser?.gender || 'male',
                         last_message,
-                        last_message_time,
-                        unread_count,
+                        last_message_time: lastMessageData?.created_at || null,
+                        unread_count: unreadCount || 0,
                     };
                 })
             );
+
+            // Ordenar por último mensaje (más reciente primero)
+            transformedConnections.sort((a, b) => {
+                if (!a.last_message_time) return 1;
+                if (!b.last_message_time) return -1;
+                return new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime();
+            });
 
             setConnections(transformedConnections);
         } catch (error) {
@@ -107,9 +134,80 @@ export default function ChatsListScreen() {
     };
 
     const handleChatPress = (connectionId: string, userId: string) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        // Navegar a la pantalla de chat individual
-        router.push(`/(app)/chat/${userId}` as any);
+        if (selectionMode) {
+            // En modo selección, marcar/desmarcar
+            toggleSelection(connectionId);
+        } else {
+            // Modo normal, abrir chat
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push(`/(app)/chat/${userId}` as any);
+        }
+    };
+
+    const handleChatLongPress = (connectionId: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setSelectionMode(true);
+        toggleSelection(connectionId);
+    };
+
+    const toggleSelection = (connectionId: string) => {
+        setSelectedChats(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(connectionId)) {
+                newSet.delete(connectionId);
+            } else {
+                newSet.add(connectionId);
+            }
+            // Si no hay selecciones, salir del modo selección
+            if (newSet.size === 0) {
+                setSelectionMode(false);
+            }
+            return newSet;
+        });
+    };
+
+    const cancelSelection = () => {
+        setSelectedChats(new Set());
+        setSelectionMode(false);
+    };
+
+    const deleteSelectedChats = async () => {
+        if (selectedChats.size === 0) return;
+
+        try {
+            // Borrar las conexiones seleccionadas
+            const idsToDelete = Array.from(selectedChats);
+            
+            for (const connId of idsToDelete) {
+                const conn = connections.find(c => c.id === connId);
+                if (!conn) continue;
+
+                // Borrar mensajes
+                await supabase
+                    .from('sync_messages')
+                    .delete()
+                    .eq('from_user_id', user!.id)
+                    .eq('to_user_id', conn.user_id);
+
+                await supabase
+                    .from('sync_messages')
+                    .delete()
+                    .eq('from_user_id', conn.user_id)
+                    .eq('to_user_id', user!.id);
+
+                // Borrar la conexión
+                await supabase
+                    .from('connections')
+                    .delete()
+                    .eq('id', connId);
+            }
+
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            cancelSelection();
+            loadConnections();
+        } catch (error) {
+            console.error('Error deleting chats:', error);
+        }
     };
 
     const formatTime = (dateString: string | null) => {
@@ -134,8 +232,54 @@ export default function ChatsListScreen() {
         <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Chats</Text>
+                    {selectionMode ? (
+                        <View style={styles.selectionHeader}>
+                            <Pressable onPress={cancelSelection} style={styles.cancelButton}>
+                                <Ionicons name="close" size={24} color="#FFF" />
+                            </Pressable>
+                            <Text style={styles.selectionTitle}>
+                                {selectedChats.size} seleccionado{selectedChats.size !== 1 ? 's' : ''}
+                            </Text>
+                            <Pressable onPress={deleteSelectedChats} style={styles.deleteButton}>
+                                <Ionicons name="trash" size={24} color="#FFF" />
+                            </Pressable>
+                        </View>
+                    ) : (
+                        <Text style={styles.headerTitle}>Chats</Text>
+                    )}
                 </View>
+
+                {/* Burbujas de contactos activos */}
+                {!selectionMode && connections.length > 0 && (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.bubblesContainer}
+                        contentContainerStyle={styles.bubblesContent}
+                    >
+                        {connections.map((connection) => (
+                            <Pressable
+                                key={connection.id}
+                                style={styles.bubble}
+                                onPress={() => handleChatPress(connection.id, connection.user_id)}
+                            >
+                                {connection.user_avatar ? (
+                                    <Image
+                                        source={{ uri: connection.user_avatar }}
+                                        style={styles.bubbleAvatar}
+                                    />
+                                ) : (
+                                    <View style={styles.bubbleAvatarPlaceholder}>
+                                        <Ionicons name="person" size={24} color="#667eea" />
+                                    </View>
+                                )}
+                                <Text style={styles.bubbleName} numberOfLines={1}>
+                                    {connection.user_name.split(' ')[0]}
+                                </Text>
+                            </Pressable>
+                        ))}
+                    </ScrollView>
+                )}
 
                 <ScrollView
                     style={styles.scrollView}
@@ -162,61 +306,83 @@ export default function ChatsListScreen() {
                             </Text>
                         </View>
                     ) : (
-                        connections.map((connection) => (
-                            <Pressable
-                                key={connection.id}
-                                style={styles.chatCard}
-                                onPress={() => handleChatPress(connection.id, connection.user_id)}
-                            >
-                                <View style={styles.avatarContainer}>
-                                    {connection.user_avatar ? (
-                                        <Image
-                                            source={{ uri: connection.user_avatar }}
-                                            style={styles.avatar}
-                                        />
-                                    ) : (
-                                        <View style={styles.avatarPlaceholder}>
-                                            <Ionicons name="person" size={32} color="#667eea" />
+                        connections.map((connection) => {
+                            const isSelected = selectedChats.has(connection.id);
+                            return (
+                                <Pressable
+                                    key={connection.id}
+                                    style={[
+                                        styles.chatCard,
+                                        isSelected && styles.chatCardSelected
+                                    ]}
+                                    onPress={() => handleChatPress(connection.id, connection.user_id)}
+                                    onLongPress={() => handleChatLongPress(connection.id)}
+                                >
+                                    {selectionMode && (
+                                        <View style={styles.checkboxContainer}>
+                                            <View style={[
+                                                styles.checkbox,
+                                                isSelected && styles.checkboxSelected
+                                            ]}>
+                                                {isSelected && (
+                                                    <Ionicons name="checkmark" size={16} color="#FFF" />
+                                                )}
+                                            </View>
                                         </View>
                                     )}
-                                    <View style={[
-                                        styles.genderBadge,
-                                        { backgroundColor: connection.user_gender === 'male' ? '#3B82F6' : '#EC4899' }
-                                    ]}>
-                                        <Ionicons
-                                            name={connection.user_gender === 'male' ? 'male' : 'female'}
-                                            size={12}
-                                            color="#FFF"
-                                        />
-                                    </View>
-                                </View>
 
-                                <View style={styles.chatInfo}>
-                                    <View style={styles.chatHeader}>
-                                        <Text style={styles.userName}>{connection.user_name}</Text>
-                                        {connection.last_message_time && (
-                                            <Text style={styles.time}>
-                                                {formatTime(connection.last_message_time)}
-                                            </Text>
-                                        )}
-                                    </View>
-                                    <View style={styles.messageRow}>
-                                        <Text style={styles.lastMessage} numberOfLines={1}>
-                                            {connection.last_message || 'Inicia una conversación'}
-                                        </Text>
-                                        {connection.unread_count > 0 && (
-                                            <View style={styles.unreadBadge}>
-                                                <Text style={styles.unreadText}>
-                                                    {connection.unread_count > 99 ? '99+' : connection.unread_count}
-                                                </Text>
+                                    <View style={styles.avatarContainer}>
+                                        {connection.user_avatar ? (
+                                            <Image
+                                                source={{ uri: connection.user_avatar }}
+                                                style={styles.avatar}
+                                            />
+                                        ) : (
+                                            <View style={styles.avatarPlaceholder}>
+                                                <Ionicons name="person" size={32} color="#667eea" />
                                             </View>
                                         )}
+                                        <View style={[
+                                            styles.genderBadge,
+                                            { backgroundColor: connection.user_gender === 'male' ? '#3B82F6' : '#EC4899' }
+                                        ]}>
+                                            <Ionicons
+                                                name={connection.user_gender === 'male' ? 'male' : 'female'}
+                                                size={12}
+                                                color="#FFF"
+                                            />
+                                        </View>
                                     </View>
-                                </View>
 
-                                <Ionicons name="chevron-forward" size={20} color="rgba(255, 255, 255, 0.5)" />
-                            </Pressable>
-                        ))
+                                    <View style={styles.chatInfo}>
+                                        <View style={styles.chatHeader}>
+                                            <Text style={styles.userName}>{connection.user_name}</Text>
+                                            {connection.last_message_time && (
+                                                <Text style={styles.time}>
+                                                    {formatTime(connection.last_message_time)}
+                                                </Text>
+                                            )}
+                                        </View>
+                                        <View style={styles.messageRow}>
+                                            <Text style={styles.lastMessage} numberOfLines={1}>
+                                                {connection.last_message || 'Inicia una conversación'}
+                                            </Text>
+                                            {connection.unread_count > 0 && (
+                                                <View style={styles.unreadBadge}>
+                                                    <Text style={styles.unreadText}>
+                                                        {connection.unread_count > 99 ? '99+' : connection.unread_count}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    </View>
+
+                                    {!selectionMode && (
+                                        <Ionicons name="chevron-forward" size={20} color="rgba(255, 255, 255, 0.5)" />
+                                    )}
+                                </Pressable>
+                            );
+                        })
                     )}
                 </ScrollView>
             </SafeAreaView>
@@ -239,6 +405,60 @@ const styles = StyleSheet.create({
         fontSize: 32,
         fontWeight: '800',
         color: '#FFF',
+    },
+    selectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    selectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#FFF',
+        flex: 1,
+        textAlign: 'center',
+    },
+    cancelButton: {
+        padding: 8,
+    },
+    deleteButton: {
+        padding: 8,
+    },
+    bubblesContainer: {
+        maxHeight: 100,
+        marginBottom: 12,
+    },
+    bubblesContent: {
+        paddingHorizontal: 20,
+        gap: 12,
+    },
+    bubble: {
+        alignItems: 'center',
+        width: 70,
+    },
+    bubbleAvatar: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        borderWidth: 3,
+        borderColor: '#FFF',
+    },
+    bubbleAvatarPlaceholder: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#FFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 3,
+        borderColor: '#FFF',
+    },
+    bubbleName: {
+        fontSize: 12,
+        color: '#FFF',
+        marginTop: 4,
+        fontWeight: '600',
+        textAlign: 'center',
     },
     scrollView: {
         flex: 1,
@@ -276,6 +496,27 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 3,
+    },
+    chatCardSelected: {
+        backgroundColor: '#E0E7FF',
+        borderWidth: 2,
+        borderColor: '#667eea',
+    },
+    checkboxContainer: {
+        marginRight: 12,
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#D1D5DB',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    checkboxSelected: {
+        backgroundColor: '#667eea',
+        borderColor: '#667eea',
     },
     avatarContainer: {
         position: 'relative',
@@ -334,6 +575,7 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         flex: 1,
         marginRight: 8,
+        flexShrink: 1,
     },
     unreadBadge: {
         backgroundColor: '#EF4444',

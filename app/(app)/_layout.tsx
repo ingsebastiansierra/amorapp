@@ -58,6 +58,9 @@ function MessagesTabIcon({ color, focused }: { color: string; focused: boolean }
 
         loadUnreadCount();
 
+        // Polling cada 5 segundos como respaldo
+        const pollingInterval = setInterval(loadUnreadCount, 5000);
+
         // Suscripción en tiempo real para actualizar el contador
         const channel = supabase
             .channel('unread-messages')
@@ -114,6 +117,7 @@ function MessagesTabIcon({ color, focused }: { color: string; focused: boolean }
 
         return () => {
             supabase.removeChannel(channel);
+            clearInterval(pollingInterval);
         };
     }, [user]);
 
@@ -361,8 +365,8 @@ const styles = StyleSheet.create({
     },
     badge: {
         position: 'absolute',
-        top: -6,
-        right: -10,
+        top: -4,
+        right: -6,
         backgroundColor: '#EB477E',
         borderRadius: 10,
         minWidth: 18,
@@ -375,8 +379,8 @@ const styles = StyleSheet.create({
     },
     lockBadge: {
         position: 'absolute',
-        top: -6,
-        right: -10,
+        top: -4,
+        right: -6,
         backgroundColor: '#9CA3AF',
         borderRadius: 10,
         width: 18,

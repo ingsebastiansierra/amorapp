@@ -4,7 +4,7 @@ import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '@/core/store/useAuthStore';
 import { firebaseService } from '@/core/services/firebaseService';
-import mobileAds from 'react-native-google-mobile-ads';
+// import mobileAds from 'react-native-google-mobile-ads';
 
 export default function RootLayout() {
     const initialize = useAuthStore((state) => state.initialize);
@@ -17,15 +17,15 @@ export default function RootLayout() {
 
         initialize();
 
-        // Inicializar AdMob
-        mobileAds()
-            .initialize()
-            .then(() => {
-                // console.log('✅ AdMob inicializado correctamente');
-            })
-            .catch((error) => {
-                console.warn('⚠️ AdMob initialization failed:', error);
-            });
+        // Inicializar AdMob - DESHABILITADO TEMPORALMENTE
+        // mobileAds()
+        //     .initialize()
+        //     .then(() => {
+        //         // console.log('✅ AdMob inicializado correctamente');
+        //     })
+        //     .catch((error) => {
+        //         console.warn('⚠️ AdMob initialization failed:', error);
+        //     });
     }, []);
 
     return (

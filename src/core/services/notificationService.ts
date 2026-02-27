@@ -190,11 +190,9 @@ class NotificationService {
         messagePreview: string,
         emotion: EmotionalState
     ): Promise<void> {
-        const emotionConfig = EMOTIONAL_STATES[emotion];
-        
         await this.sendPushNotification({
             to: partnerToken,
-            title: `💌 ${partnerName} (${emotionConfig.emoji} ${emotionConfig.label})`,
+            title: partnerName,
             body: messagePreview,
             data: {
                 type: 'message_received',
@@ -217,8 +215,8 @@ class NotificationService {
     ): Promise<void> {
         await this.sendPushNotification({
             to: partnerToken,
-            title: `📸 ${partnerName} te envió una foto`,
-            body: 'Foto privada - Toca para ver (una vez)',
+            title: partnerName,
+            body: '📷 Foto privada',
             data: {
                 type: 'image_received',
                 screen: 'messages',
@@ -242,8 +240,8 @@ class NotificationService {
         
         await this.sendPushNotification({
             to: partnerToken,
-            title: `🎤 ${partnerName} te envió una nota de voz`,
-            body: `Nota de voz (${durationStr})`,
+            title: partnerName,
+            body: `🎤 Nota de voz (${durationStr})`,
             data: {
                 type: 'voice_received',
                 screen: 'voice-notes',

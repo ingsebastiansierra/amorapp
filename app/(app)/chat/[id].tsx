@@ -77,6 +77,8 @@ export default function MessagesScreen() {
     const [viewingPartnerPhoto, setViewingPartnerPhoto] = useState<string | null>(null);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+    const [showChatMenu, setShowChatMenu] = useState(false);
+    const [chatCleared, setChatCleared] = useState(false);
     const messageRefs = useRef<Record<string, any>>({});
     const { backgroundImage, backgroundOpacity, messageColorTheme, setBackgroundImage, setBackgroundOpacity, loadBackground, clearBackground } = useChatBackgroundStore();
 
@@ -121,7 +123,7 @@ export default function MessagesScreen() {
     }, []);
 
     useEffect(() => {
-        if (user) {
+        if (user && !chatCleared) {
             loadMessages();
 
             // Suscripción en tiempo real para mensajes nuevos
@@ -137,8 +139,10 @@ export default function MessagesScreen() {
                     },
                     (payload) => {
                         console.log('📨 Nuevo mensaje recibido en tiempo real:', payload);
-                        // Recargar mensajes cuando llega uno nuevo
-                        loadMessages();
+                        // Recargar mensajes cuando llega uno nuevo (solo si no se vació el chat)
+                        if (!chatCleared) {
+                            loadMessages();
+                        }
                     }
                 )
                 .on(
@@ -152,20 +156,26 @@ export default function MessagesScreen() {
                     (payload) => {
                         console.log('📝 Mensaje actualizado en tiempo real:', payload);
                         // Recargar mensajes cuando se actualiza uno (ej: marcado como leído)
-                        loadMessages();
+                        if (!chatCleared) {
+                            loadMessages();
+                        }
                     }
                 )
                 .subscribe();
 
             // Polling de respaldo cada 30 segundos (reducido de 5)
-            const interval = setInterval(loadMessages, 30000);
+            const interval = setInterval(() => {
+                if (!chatCleared) {
+                    loadMessages();
+                }
+            }, 30000);
 
             return () => {
                 supabase.removeChannel(channel);
                 clearInterval(interval);
             };
         }
-    }, [user, partner]);
+    }, [user, partner, chatCleared]);
 
     // Polling para actualizar info de la pareja (incluyendo last_seen)
     useEffect(() => {
@@ -492,6 +502,11 @@ export default function MessagesScreen() {
             return;
         }
 
+        // Si el chat fue vaciado, resetear la bandera al enviar un nuevo mensaje
+        if (chatCleared) {
+            setChatCleared(false);
+        }
+
         const messageText = newMessage.trim();
         const emotionToUse: EmotionalState = myCurrentEmotion || EmotionalState.NORMAL;
         const replyToId = replyingTo?.id || null;
@@ -776,6 +791,101 @@ export default function MessagesScreen() {
         }
     };
 
+    const handleClearChat = () => {
+        Alert.alert(
+            'Vaciar chat',
+            '¿Estás seguro de que quieres eliminar todos los mensajes, imágenes, audios y videos? Esta acción no se puede deshacer.',
+            [
+                {
+                    text: 'Cancelar',
+                    style: 'cancel',
+                    onPress: () => setShowChatMenu(false)
+                },
+                {
+                    text: 'Eliminar todo',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setShowChatMenu(false);
+                        
+                        // Mostrar loading
+                        Alert.alert('Vaciando chat...', 'Por favor espera');
+                        
+                        try {
+                            if (!user || !otherUserId) return;
+
+                            console.log('🗑️ Iniciando borrado de chat entre:', user.id, 'y', otherUserId);
+                            
+                            // Verificar autenticación
+                            const { data: { user: authUser } } = await supabase.auth.getUser();
+                            console.log('🔐 Usuario autenticado:', authUser?.id);
+                            console.log('🔐 Usuario del store:', user.id);
+                            console.log('🔐 ¿Coinciden?', authUser?.id === user.id);
+
+                            // Borrar mensajes directamente con las dos queries
+                            const { error: deleteError1, count: count1 } = await supabase
+                                .from('sync_messages')
+                                .delete({ count: 'exact' })
+                                .eq('from_user_id', user.id)
+                                .eq('to_user_id', otherUserId);
+
+                            const { error: deleteError2, count: count2 } = await supabase
+                                .from('sync_messages')
+                                .delete({ count: 'exact' })
+                                .eq('from_user_id', otherUserId)
+                                .eq('to_user_id', user.id);
+
+                            console.log('💬 Mensajes eliminados:', count1, '+', count2, '=', (count1 || 0) + (count2 || 0));
+                            console.log('💬 Errores:', deleteError1, deleteError2);
+
+                            // Borrar imágenes directamente
+                            const { error: imgError1 } = await supabase
+                                .from('images_private')
+                                .delete()
+                                .eq('from_user_id', user.id)
+                                .eq('to_user_id', otherUserId);
+
+                            const { error: imgError2 } = await supabase
+                                .from('images_private')
+                                .delete()
+                                .eq('from_user_id', otherUserId)
+                                .eq('to_user_id', user.id);
+
+                            console.log('🖼️ Imágenes eliminadas. Errores:', imgError1, imgError2);
+
+                            // Borrar voces directamente
+                            const { error: voiceError1 } = await supabase
+                                .from('voice_notes')
+                                .delete()
+                                .eq('from_user_id', user.id)
+                                .eq('to_user_id', otherUserId);
+
+                            const { error: voiceError2 } = await supabase
+                                .from('voice_notes')
+                                .delete()
+                                .eq('from_user_id', otherUserId)
+                                .eq('to_user_id', user.id);
+
+                            console.log('🎤 Voces eliminadas. Errores:', voiceError1, voiceError2);
+
+                            // Marcar que el chat fue vaciado
+                            setChatCleared(true);
+
+                            // Vaciar el chat en la UI
+                            setMessages([]);
+                            
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            Alert.alert('Listo', 'El chat ha sido vaciado completamente');
+
+                        } catch (error) {
+                            console.error('❌ Error clearing chat:', error);
+                            Alert.alert('Error', 'No se pudo vaciar el chat. Intenta de nuevo.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const renderMessage = (msg: Message) => {
         const isFromMe = msg.from_user_id === user?.id;
         const emotionConfig = EMOTIONAL_STATES[msg.synced_emotion as EmotionalState];
@@ -839,7 +949,7 @@ export default function MessagesScreen() {
                                                 styles.quotedMessageText,
                                                 isFromMe ? styles.quotedMessageTextMe : styles.quotedMessageTextPartner
                                             ]}
-                                            numberOfLines={2}
+                                            numberOfLines={3}
                                         >
                                             {msg.replied_message.type === 'voice' ? '🎤 Nota de voz' :
                                                 msg.replied_message.type === 'image' ? '📷 Imagen' :
@@ -916,7 +1026,7 @@ export default function MessagesScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <Pressable
-                        onPress={() => router.back()}
+                        onPress={() => router.push('/(app)/messages')}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         style={styles.backButton}
                     >
@@ -962,6 +1072,13 @@ export default function MessagesScreen() {
                                     style={styles.searchButton}
                                 >
                                     <Ionicons name="search" size={24} color="#181113" />
+                                </Pressable>
+                                <Pressable
+                                    onPress={() => setShowChatMenu(true)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    style={styles.headerButton}
+                                >
+                                    <Ionicons name="ellipsis-vertical" size={24} color="#181113" />
                                 </Pressable>
                             </View>
                         </>
@@ -1344,6 +1461,38 @@ export default function MessagesScreen() {
                         </View>
                     </View>
                 </Modal>
+
+                {/* Modal de menú del chat */}
+                <Modal
+                    visible={showChatMenu}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setShowChatMenu(false)}
+                >
+                    <Pressable
+                        style={styles.modalOverlay}
+                        onPress={() => setShowChatMenu(false)}
+                    >
+                        <View style={styles.chatMenuContainer}>
+                            <Pressable
+                                style={[styles.chatMenuItem, styles.chatMenuItemDanger]}
+                                onPress={handleClearChat}
+                            >
+                                <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                                <Text style={[styles.chatMenuItemText, styles.chatMenuItemTextDanger]}>
+                                    Vaciar chat
+                                </Text>
+                            </Pressable>
+
+                            <Pressable
+                                style={styles.chatMenuClose}
+                                onPress={() => setShowChatMenu(false)}
+                            >
+                                <Text style={styles.chatMenuCloseText}>Cancelar</Text>
+                            </Pressable>
+                        </View>
+                    </Pressable>
+                </Modal>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -1507,7 +1656,7 @@ const styles = StyleSheet.create({
     },
     messageBubble: {
         minWidth: 80,
-        maxWidth: '85%',
+        maxWidth: '90%',
         borderRadius: 20,
         paddingVertical: 8,
         paddingHorizontal: 12,
@@ -1640,6 +1789,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 8,
         gap: 8,
+        width: '100%',
     },
     quotedMessagePartner: {
         backgroundColor: 'rgba(0, 0, 0, 0.05)',
@@ -1673,6 +1823,7 @@ const styles = StyleSheet.create({
     },
     quotedMessageText: {
         fontSize: 13,
+        lineHeight: 18,
     },
     quotedMessageTextPartner: {
         color: '#6B7280',
@@ -1867,6 +2018,45 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     backgroundMenuCloseText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    chatMenuContainer: {
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 8,
+        marginHorizontal: 20,
+        marginTop: 80,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    chatMenuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        gap: 12,
+        borderRadius: 12,
+    },
+    chatMenuItemDanger: {
+        backgroundColor: '#FEF2F2',
+    },
+    chatMenuItemText: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    chatMenuItemTextDanger: {
+        color: '#EF4444',
+    },
+    chatMenuClose: {
+        padding: 16,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    chatMenuCloseText: {
         fontSize: 16,
         fontWeight: '600',
         color: '#6B7280',

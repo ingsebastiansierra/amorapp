@@ -45,21 +45,13 @@
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"
       ],
-      "softwareKeyboardLayoutMode": "pan",
-      "googleMobileAdsAppId": "ca-app-pub-6948900650863718~6879672767"
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-6948900650863718~6879672767",
-          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
-        }
-      ],
       [
         "expo-build-properties",
         {
@@ -97,12 +89,12 @@
     },
     "extra": {
       "router": {},
-      "eas": {
-        "projectId": "b16f321a-b17f-4510-a271-34202c1cc7a7"
-      },
       "supabaseUrl": "https://rrimgqumfozqfpskthoc.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyaW1ncXVtZm96cWZwc2t0aG9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3MDgxMTcsImV4cCI6MjA4MzI4NDExN30.KEi1p-DgkmDYSsqrBmUYknZ7RoA_KvllWgHWx1pEKfg"
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyaW1ncXVtZm96cWZwc2t0aG9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3MDgxMTcsImV4cCI6MjA4MzI4NDExN30.KEi1p-DgkmDYSsqrBmUYknZ7RoA_KvllWgHWx1pEKfg",
+      "eas": {
+        "projectId": "5b6e44e7-78ce-44fb-bd75-f9b96e6bbcd5"
+      }
     },
-    "owner": "sebasing03"
+    "owner": "sebasing04"
   }
 }
