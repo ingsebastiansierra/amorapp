@@ -119,7 +119,17 @@ export default function ChatsListScreen() {
                 return new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime();
             });
 
+            // Ordenar por fecha
+            transformedConnections.sort((a, b) => {
+                if (!a.last_message_time) return 1;
+                if (!b.last_message_time) return -1;
+                return new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime();
+            });
+
+            console.log('📊 Total chats:', transformedConnections.length);
+            
             setConnections(transformedConnections);
+
         } catch (error) {
             console.error('Error loading connections:', error);
         } finally {

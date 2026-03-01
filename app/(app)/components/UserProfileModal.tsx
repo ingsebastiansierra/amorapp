@@ -227,9 +227,12 @@ export function UserProfileModal({ visible, userId, onClose }: UserProfileModalP
                                 <View style={styles.heroImageContainer}>
                                     <Image
                                         source={{
-                                            uri: profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&size=400`,
+                                            uri: profile.avatar_url || `https://i.pravatar.cc/1080?img=${Math.floor(Math.random() * 70) + 1}`,
+                                            cache: 'force-cache',
                                         }}
                                         style={styles.heroImage}
+                                        resizeMode="cover"
+                                        fadeDuration={0}
                                     />
                                     <LinearGradient
                                         colors={['transparent', 'rgba(0,0,0,0.7)']}
@@ -242,6 +245,12 @@ export function UserProfileModal({ visible, userId, onClose }: UserProfileModalP
                                         <Text style={styles.verifiedText}>Perfil verificado</Text>
                                     </View>
 
+                                    {/* Porcentaje de compatibilidad en la imagen */}
+                                    <View style={styles.compatibilityBadge}>
+                                        <Ionicons name="heart" size={18} color="#FF6B9D" />
+                                        <Text style={styles.compatibilityText}>{matchPercentage}%</Text>
+                                    </View>
+
                                     {/* Nombre y ubicación sobre la imagen */}
                                     <View style={styles.heroInfo}>
                                         <Text style={styles.heroName}>{profile.name}, {profile.age}</Text>
@@ -250,21 +259,6 @@ export function UserProfileModal({ visible, userId, onClose }: UserProfileModalP
                                             <Text style={styles.locationText}>
                                                 Madrid, España • 2 km de distancia
                                             </Text>
-                                        </View>
-                                    </View>
-                                </View>
-
-                                {/* Sección de coincidencia */}
-                                <View style={styles.matchSection}>
-                                    <View style={styles.matchCard}>
-                                        <Text style={styles.matchLabel}>TU PALPITO</Text>
-                                        <View style={styles.matchRow}>
-                                            <Text style={styles.matchPercentage}>{matchPercentage}%</Text>
-                                            <Text style={styles.matchText}>Coincidencia</Text>
-                                            <View style={styles.heartIcon}>
-                                                <Ionicons name="heart" size={32} color="#FF6B9D" />
-                                                <Text style={styles.heartPercentage}>{matchPercentage}%</Text>
-                                            </View>
                                         </View>
                                     </View>
                                 </View>
@@ -452,6 +446,7 @@ const styles = StyleSheet.create({
     heroImage: {
         width: '100%',
         height: '100%',
+        resizeMode: 'cover',
     },
     heroGradient: {
         position: 'absolute',
@@ -476,6 +471,28 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 12,
         fontWeight: '600',
+    },
+    compatibilityBadge: {
+        position: 'absolute',
+        top: 60,
+        right: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        gap: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    compatibilityText: {
+        color: '#FF6B9D',
+        fontSize: 14,
+        fontWeight: '700',
     },
     heroInfo: {
         position: 'absolute',
@@ -505,28 +522,64 @@ const styles = StyleSheet.create({
         textShadowRadius: 4,
     },
     matchSection: {
-        padding: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
         backgroundColor: '#FFF',
     },
     matchCard: {
         backgroundColor: '#FFF5F7',
         borderRadius: 16,
-        padding: 20,
-        borderWidth: 1,
+        padding: 16,
+        borderWidth: 2,
         borderColor: '#FFE0E9',
+        alignItems: 'center',
     },
     matchLabel: {
-        fontSize: 12,
-        fontWeight: '700',
+        fontSize: 10,
+        fontWeight: '800',
         letterSpacing: 1.5,
-        color: '#6B7280',
+        color: '#9CA3AF',
         marginBottom: 12,
+        textAlign: 'center',
     },
     matchRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        justifyContent: 'center',
+        gap: 16,
     },
+    heartIconLarge: {
+        position: 'relative',
+        width: 70,
+        height: 70,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    heartPercentageLarge: {
+        position: 'absolute',
+        fontSize: 14,
+        fontWeight: '900',
+        color: '#FFF',
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    matchTextContainer: {
+        alignItems: 'flex-start',
+    },
+    matchPercentageText: {
+        fontSize: 32,
+        fontWeight: '900',
+        color: '#FF6B9D',
+        lineHeight: 32,
+    },
+    matchDescriptionText: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontWeight: '600',
+        marginTop: 2,
+    },
+    // Estilos antiguos removidos
     matchPercentage: {
         fontSize: 48,
         fontWeight: 'bold',
@@ -553,6 +606,7 @@ const styles = StyleSheet.create({
     section: {
         paddingHorizontal: 20,
         marginBottom: 24,
+        marginTop: 20,
     },
     sectionHeader: {
         flexDirection: 'row',

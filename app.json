@@ -4,7 +4,7 @@
     "slug": "palpitos",
     "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/aura_logo.png",
     "userInterfaceStyle": "automatic",
     "scheme": "palpitos",
     "splash": {
@@ -28,7 +28,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/aura_logo.png",
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.palpitos.app",

@@ -126,14 +126,9 @@ function MessagesTabIcon({ color, focused }: { color: string; focused: boolean }
             <Ionicons
                 name={focused ? "chatbubbles" : "chatbubbles-outline"}
                 size={26}
-                color={focused ? '#FF6B9D' : (hasConnections ? color : '#D1D5DB')}
+                color={focused ? '#FF6B9D' : color}
             />
-            {!hasConnections && (
-                <View style={styles.lockBadge}>
-                    <Ionicons name="lock-closed" size={10} color="#FFF" />
-                </View>
-            )}
-            {unreadCount > 0 && hasConnections && (
+            {unreadCount > 0 && (
                 <View style={styles.badge}>
                     <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
                 </View>
@@ -221,7 +216,7 @@ export default function AppLayout() {
                     title: '',
                     tabBarIcon: ({ color, focused }) => (
                         <View style={[styles.centerButton, focused && styles.centerButtonActive]}>
-                            <Ionicons name="heart" size={32} color="#FFF" />
+                            <Ionicons name="flame" size={32} color="#FFF" />
                         </View>
                     ),
                     tabBarLabel: () => null,

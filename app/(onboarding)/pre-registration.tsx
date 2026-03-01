@@ -125,7 +125,30 @@ export default function PreRegistrationScreen() {
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 {/* Header */}
                 <View style={styles.header}>
+                    <Pressable
+                        style={styles.logoutButton}
+                        onPress={async () => {
+                            Alert.alert(
+                                'Cerrar Sesión',
+                                '¿Estás seguro que quieres cerrar sesión?',
+                                [
+                                    { text: 'Cancelar', style: 'cancel' },
+                                    {
+                                        text: 'Cerrar Sesión',
+                                        style: 'destructive',
+                                        onPress: async () => {
+                                            await useAuthStore.getState().signOut();
+                                            router.replace('/(auth)/login');
+                                        },
+                                    },
+                                ]
+                            );
+                        }}
+                    >
+                        <Ionicons name="log-out-outline" size={24} color="#FFF" />
+                    </Pressable>
                     <Text style={styles.step}>Completa tu Perfil</Text>
+                    <View style={{ width: 24 }} />
                 </View>
 
                 {/* Content */}
@@ -195,6 +218,13 @@ const styles = StyleSheet.create({
         paddingTop: 16,
         paddingBottom: 16,
         alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    logoutButton: {
+        padding: 8,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
     },
     step: {
         fontSize: 16,

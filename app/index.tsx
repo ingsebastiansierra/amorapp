@@ -18,36 +18,60 @@ export default function Index() {
 
     const checkUserStatus = async () => {
         try {
+            console.log('🔍 [INDEX] Verificando estado del usuario...');
+            
             if (!user) {
+                console.log('❌ [INDEX] No hay usuario válido, redirigiendo a login');
                 router.replace('/(auth)/login');
                 return;
             }
 
-            // Verificar si el usuario ha completado los cuestionarios
-            const { data: interests } = await supabase
+            console.log('👤 [INDEX] Usuario válido encontrado:', user.id);
+
+            // El usuario ya fue validado en initialize(), solo verificar cuestionarios
+            console.log('🔍 [INDEX] Verificando cuestionarios...');
+            const { data: interests, error: interestsError } = await supabase
                 .from('user_interests')
                 .select('music_favorite_artist, entertainment_favorite_movie, sports_favorite_sport, food_favorite_food, lifestyle_favorite_color')
                 .eq('user_id', user.id)
                 .maybeSingle();
 
+            if (interestsError) {
+                console.error('❌ [INDEX] Error obteniendo intereses:', interestsError);
+                console.log('📝 [INDEX] Redirigiendo a onboarding por error');
+                router.replace('/(onboarding)/pre-registration');
+                return;
+            }
+
+            console.log('📊 [INDEX] Datos de intereses:', interests);
+
             // Verificar si todos los cuestionarios están completos
-            const allCompleted = interests &&
-                interests.music_favorite_artist &&
-                interests.entertainment_favorite_movie &&
-                interests.sports_favorite_sport &&
-                interests.food_favorite_food &&
-                interests.lifestyle_favorite_color;
+            // Si interests es null, significa que nunca ha completado ningún cuestionario
+            const allCompleted = interests !== null &&
+                interests.music_favorite_artist !== null &&
+                interests.entertainment_favorite_movie !== null &&
+                interests.sports_favorite_sport !== null &&
+                interests.food_favorite_food !== null &&
+                interests.lifestyle_favorite_color !== null;
+
+            console.log('✅ [INDEX] Cuestionarios completos:', allCompleted);
+            console.log('📋 [INDEX] Detalles:');
+            console.log('  - Música:', interests?.music_favorite_artist ? '✅' : '❌');
+            console.log('  - Entretenimiento:', interests?.entertainment_favorite_movie ? '✅' : '❌');
+            console.log('  - Deportes:', interests?.sports_favorite_sport ? '✅' : '❌');
+            console.log('  - Comida:', interests?.food_favorite_food ? '✅' : '❌');
+            console.log('  - Estilo de vida:', interests?.lifestyle_favorite_color ? '✅' : '❌');
 
             if (!allCompleted) {
-                // Si no ha completado los cuestionarios, enviarlo a pre-registro
+                console.log('📝 [INDEX] Cuestionarios incompletos, redirigiendo a onboarding');
                 router.replace('/(onboarding)/pre-registration');
             } else {
-                // Si ya completó todo, enviarlo a home
+                console.log('🏠 [INDEX] Todo completo, redirigiendo a home');
                 router.replace('/(app)/home');
             }
         } catch (error) {
-            console.error('Error checking user status:', error);
-            // En caso de error, enviar a pre-registro por seguridad
+            console.error('💥 [INDEX] Error verificando estado:', error);
+            // En caso de error, ir a onboarding por seguridad
             router.replace('/(onboarding)/pre-registration');
         } finally {
             setChecking(false);

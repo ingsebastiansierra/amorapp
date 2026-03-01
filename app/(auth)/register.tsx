@@ -7,6 +7,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
+import ErrorModal from './components/ErrorModal';
+import { getFriendlyErrorMessage } from '@core/utils/errorMessages';
+import { logger } from '@core/utils/logger';
 
 export default function RegisterScreen() {
     const [name, setName] = useState('');
@@ -21,6 +24,14 @@ export default function RegisterScreen() {
     const [avatarUri, setAvatarUri] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+
+    // Estados de error modal
+    const [errorModal, setErrorModal] = useState({
+        visible: false,
+        title: '',
+        message: '',
+        emoji: '😅'
+    });
 
     // Estados de validación
     const [passwordsMatch, setPasswordsMatch] = useState<boolean | null>(null);
@@ -149,33 +160,47 @@ export default function RegisterScreen() {
     };
 
     const handleRegister = async () => {
+        logger.log('🎯 [UI] Iniciando proceso de registro...');
+        
         if (!name || !email || !password || !confirmPassword || !gender || !birthDate) {
+            logger.warn('⚠️ [UI] Campos incompletos');
             Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
             return;
         }
 
         if (password.length < 6) {
+            logger.warn('⚠️ [UI] Contraseña muy corta');
             Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
             return;
         }
 
         if (password !== confirmPassword) {
+            logger.warn('⚠️ [UI] Contraseñas no coinciden');
             Alert.alert('Error', 'Las contraseñas no coinciden');
             return;
         }
 
         const age = calculateAge(birthDate);
+        logger.log('👶 [UI] Edad calculada:', age);
+        
         if (age < 18) {
+            logger.warn('⚠️ [UI] Usuario menor de edad');
             Alert.alert('Error', 'Debes tener al menos 18 años para registrarte');
             return;
         }
 
         setLoading(true);
         try {
+            logger.log('📞 [UI] Llamando a signUpWithOtp...');
             const { signUpWithOtp } = useAuthStore.getState();
+            
             await signUpWithOtp(email, password, name, gender, birthDate, avatarUri);
 
+            logger.log('✅ [UI] Usuario creado, código OTP enviado');
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            
+            // SIEMPRE ir a verificar email (no hay sesión hasta que se verifique el OTP)
+            logger.log('📧 [UI] Redirigiendo a verificación de email...');
             router.push({
                 pathname: '/(auth)/verify-email',
                 params: {
@@ -188,10 +213,21 @@ export default function RegisterScreen() {
                 }
             });
         } catch (error: any) {
+            logger.error('❌ [UI] Error en registro:', error);
+            
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            Alert.alert('Error', error.message);
+            
+            // Mostrar error amigable
+            const friendlyError = getFriendlyErrorMessage(error);
+            setErrorModal({
+                visible: true,
+                title: friendlyError.title,
+                message: friendlyError.message,
+                emoji: friendlyError.emoji
+            });
         } finally {
             setLoading(false);
+            logger.log('🏁 [UI] Proceso de registro finalizado');
         }
     };
 
@@ -229,7 +265,7 @@ export default function RegisterScreen() {
                         <Ionicons name="arrow-back" size={24} color="#2D3748" />
                     </Pressable>
                     <Image
-                        source={require('../../assets/icon.png')}
+                        source={require('../../assets/aura_logo.png')}
                         style={styles.logo}
                         resizeMode="contain"
                     />
@@ -239,23 +275,6 @@ export default function RegisterScreen() {
 
                 {/* Card */}
                 <View style={styles.cardWrapper}>
-                    {/* Borde animado con destello */}
-                    <Animated.View
-                        style={[
-                            styles.animatedBorder,
-                            {
-                                transform: [{ rotate: borderRotateInterpolate }],
-                            },
-                        ]}
-                    >
-                        <LinearGradient
-                            colors={['#FFFFFF', '#FFD700', '#FFA500', '#FFD700', '#FFFFFF']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.borderGradient}
-                        />
-                    </Animated.View>
-
                     <View style={styles.card}>
                         {/* Avatar */}
                         <Pressable style={styles.avatarContainer} onPress={pickImage}>
@@ -500,6 +519,15 @@ export default function RegisterScreen() {
 
                 <View style={{ height: 30 }} />
             </ScrollView>
+
+            {/* Error Modal */}
+            <ErrorModal
+                visible={errorModal.visible}
+                onClose={() => setErrorModal({ ...errorModal, visible: false })}
+                title={errorModal.title}
+                message={errorModal.message}
+                emoji={errorModal.emoji}
+            />
         </LinearGradient>
     );
 }
@@ -558,19 +586,6 @@ const styles = StyleSheet.create({
     cardWrapper: {
         position: 'relative',
         marginBottom: 24,
-        padding: 4,
-    },
-    animatedBorder: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        borderRadius: 28,
-    },
-    borderGradient: {
-        flex: 1,
-        borderRadius: 28,
     },
     card: {
         backgroundColor: '#FFF',

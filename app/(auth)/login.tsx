@@ -5,6 +5,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@core/store/useAuthStore';
 import * as Haptics from 'expo-haptics';
+import ErrorModal from './components/ErrorModal';
+import { getFriendlyErrorMessage } from '@core/utils/errorMessages';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
@@ -15,6 +17,14 @@ export default function LoginScreen() {
     const [resetEmail, setResetEmail] = useState('');
     const { signIn, enterDemoMode, demoMode } = useAuthStore();
     const router = useRouter();
+
+    // Estados de error modal
+    const [errorModal, setErrorModal] = useState({
+        visible: false,
+        title: '',
+        message: '',
+        emoji: '😅'
+    });
 
     // Animaciones
     const logoScale = useRef(new Animated.Value(1)).current;
@@ -65,7 +75,15 @@ export default function LoginScreen() {
             router.replace('/(app)/home');
         } catch (error: any) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            Alert.alert('Error', error.message);
+            
+            // Mostrar error amigable
+            const friendlyError = getFriendlyErrorMessage(error);
+            setErrorModal({
+                visible: true,
+                title: friendlyError.title,
+                message: friendlyError.message,
+                emoji: friendlyError.emoji
+            });
         } finally {
             setLoading(false);
         }
@@ -92,7 +110,13 @@ export default function LoginScreen() {
             const { error } = await useAuthStore.getState().resetPassword(resetEmail);
 
             if (error) {
-                Alert.alert('Error', error.message);
+                const friendlyError = getFriendlyErrorMessage(error);
+                setErrorModal({
+                    visible: true,
+                    title: friendlyError.title,
+                    message: friendlyError.message,
+                    emoji: friendlyError.emoji
+                });
             } else {
                 setShowForgotPassword(false);
                 Alert.alert(
@@ -113,7 +137,13 @@ export default function LoginScreen() {
                 );
             }
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            const friendlyError = getFriendlyErrorMessage(error);
+            setErrorModal({
+                visible: true,
+                title: friendlyError.title,
+                message: friendlyError.message,
+                emoji: friendlyError.emoji
+            });
         } finally {
             setLoading(false);
         }
@@ -139,7 +169,7 @@ export default function LoginScreen() {
                         }}
                     >
                         <Image
-                            source={require('../../assets/icon.png')}
+                            source={require('../../assets/aura_logo.png')}
                             style={styles.logo}
                             resizeMode="contain"
                         />
@@ -153,23 +183,6 @@ export default function LoginScreen() {
 
                 {/* Card de Login */}
                 <View style={styles.cardWrapper}>
-                    {/* Borde animado con destello */}
-                    <Animated.View
-                        style={[
-                            styles.animatedBorder,
-                            {
-                                transform: [{ rotate: borderRotateInterpolate }],
-                            },
-                        ]}
-                    >
-                        <LinearGradient
-                            colors={['#FFFFFF', '#FFD700', '#FFA500', '#FFD700', '#FFFFFF']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.borderGradient}
-                        />
-                    </Animated.View>
-
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>¡Hola de nuevo!</Text>
 
@@ -366,6 +379,15 @@ export default function LoginScreen() {
                     </Pressable>
                 </Pressable>
             </Modal>
+
+            {/* Error Modal */}
+            <ErrorModal
+                visible={errorModal.visible}
+                onClose={() => setErrorModal({ ...errorModal, visible: false })}
+                title={errorModal.title}
+                message={errorModal.message}
+                emoji={errorModal.emoji}
+            />
         </LinearGradient >
     );
 }
@@ -419,19 +441,6 @@ const styles = StyleSheet.create({
     cardWrapper: {
         position: 'relative',
         marginBottom: 16,
-        padding: 4,
-    },
-    animatedBorder: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        borderRadius: 28,
-    },
-    borderGradient: {
-        flex: 1,
-        borderRadius: 28,
     },
     card: {
         backgroundColor: '#FFF',

@@ -3,6 +3,9 @@ import { View, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-nativ
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '@core/store/useAuthStore';
+import ErrorModal from './components/ErrorModal';
+import { getFriendlyErrorMessage } from '@core/utils/errorMessages';
+import { logger } from '@core/utils/logger';
 
 export default function VerifyEmailScreen() {
     const [code, setCode] = useState('');
@@ -18,6 +21,14 @@ export default function VerifyEmailScreen() {
         password: string;
     }>();
 
+    // Estados de error modal
+    const [errorModal, setErrorModal] = useState({
+        visible: false,
+        title: '',
+        message: '',
+        emoji: '😅'
+    });
+
     const handleVerifyEmail = async () => {
         if (!code) {
             Alert.alert('Error', 'Por favor ingresa el código');
@@ -31,18 +42,50 @@ export default function VerifyEmailScreen() {
 
         setLoading(true);
         try {
+            logger.log('🔐 [VERIFY] Iniciando verificación de OTP...');
+            logger.log('📧 [VERIFY] Email:', params.email);
+            logger.log('🔢 [VERIFY] Código:', code);
+            
             const { verifyEmailOtp, completeSignUp } = useAuthStore.getState();
 
             // Verificar el código OTP
+            logger.log('📝 [VERIFY] Verificando código OTP...');
             const { data, error: verifyError } = await verifyEmailOtp(params.email, code);
 
             if (verifyError) {
-                Alert.alert('Error', 'Código inválido o expirado');
+                logger.error('❌ [VERIFY] Error verificando OTP:', verifyError);
+                
+                const friendlyError = getFriendlyErrorMessage(verifyError);
+                setErrorModal({
+                    visible: true,
+                    title: friendlyError.title,
+                    message: friendlyError.message,
+                    emoji: friendlyError.emoji
+                });
                 return;
             }
 
+            logger.log('✅ [VERIFY] OTP verificado correctamente');
+            logger.log('👤 [VERIFY] Usuario verificado:', data?.user?.id);
+
             // Si la verificación fue exitosa, crear el perfil
             if (data?.user) {
+                logger.log('🎯 [VERIFY] Completando registro con datos:');
+                logger.log('  📧 Email:', params.email);
+                logger.log('  👤 Nombre:', params.name);
+                logger.log('  ⚧ Género:', params.gender);
+                logger.log('  🎂 Fecha nacimiento:', params.birthDate);
+                logger.log('  📸 Avatar URI:', params.avatarUri ? 'Sí' : 'No');
+                logger.log('  🔑 Password:', params.password ? 'Sí' : 'No');
+                
+                // Validar que todos los parámetros necesarios estén presentes
+                if (!params.email || !params.password || !params.name || !params.gender) {
+                    logger.error('❌ [VERIFY] Faltan parámetros requeridos');
+                    Alert.alert('Error', 'Faltan datos para completar el registro. Por favor intenta registrarte nuevamente.');
+                    router.replace('/(auth)/register');
+                    return;
+                }
+                
                 await completeSignUp(
                     params.email,
                     params.password,
@@ -52,11 +95,23 @@ export default function VerifyEmailScreen() {
                     params.avatarUri || null
                 );
 
+                logger.log('🎉 [VERIFY] Registro completado, redirigiendo...');
                 // Redirect to pre-registration screen
                 router.replace('/(onboarding)/pre-registration');
+            } else {
+                logger.error('❌ [VERIFY] No se encontró usuario después de verificar OTP');
+                Alert.alert('Error', 'No se pudo completar la verificación');
             }
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            logger.error('💥 [VERIFY] Error en verificación:', error);
+            
+            const friendlyError = getFriendlyErrorMessage(error);
+            setErrorModal({
+                visible: true,
+                title: friendlyError.title,
+                message: friendlyError.message,
+                emoji: friendlyError.emoji
+            });
         } finally {
             setLoading(false);
         }
@@ -76,7 +131,13 @@ export default function VerifyEmailScreen() {
             );
             Alert.alert('Código reenviado', 'Revisa tu email nuevamente');
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            const friendlyError = getFriendlyErrorMessage(error);
+            setErrorModal({
+                visible: true,
+                title: friendlyError.title,
+                message: friendlyError.message,
+                emoji: friendlyError.emoji
+            });
         } finally {
             setResending(false);
         }
@@ -132,6 +193,15 @@ export default function VerifyEmailScreen() {
                     <Text style={styles.backButtonText}>Volver</Text>
                 </Pressable>
             </View>
+
+            {/* Error Modal */}
+            <ErrorModal
+                visible={errorModal.visible}
+                onClose={() => setErrorModal({ ...errorModal, visible: false })}
+                title={errorModal.title}
+                message={errorModal.message}
+                emoji={errorModal.emoji}
+            />
         </LinearGradient>
     );
 }

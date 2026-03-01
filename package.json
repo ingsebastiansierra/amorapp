@@ -9,6 +9,8 @@
     "android:prebuild": "expo prebuild --platform android --clean",
     "android:clean": "cd android && gradlew clean && cd ..",
     "clean": "node scripts/clean-project.js",
+    "kill-ports": "node scripts/kill-ports.js",
+    "restart": "node scripts/kill-ports.js && expo start",
     "estimate-size": "node scripts/estimate-apk-size.js",
     "ios": "expo run:ios",
     "web": "expo start --web",

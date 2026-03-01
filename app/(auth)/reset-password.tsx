@@ -3,6 +3,8 @@ import { View, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-nativ
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/core/config/supabase';
+import ErrorModal from './components/ErrorModal';
+import { getFriendlyErrorMessage } from '@core/utils/errorMessages';
 
 export default function ResetPasswordScreen() {
     const [newPassword, setNewPassword] = useState('');

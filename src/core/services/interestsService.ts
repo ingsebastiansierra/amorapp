@@ -37,17 +37,37 @@ class InterestsService {
     availability: AvailabilityType = 'flexible'
   ): Promise<UserIntention | null> {
     try {
-      // Obtener el usuario autenticado actual
-      const { data: { user } } = await supabase.auth.getUser();
+      // Intentar obtener el usuario autenticado
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (!user) {
-        throw new Error('Usuario no autenticado');
+      // Usar el ID del usuario autenticado si está disponible, sino usar el parámetro
+      let targetUserId = userId;
+      
+      if (user && !authError) {
+        console.log('🔐 [INTENTION] Usuario autenticado encontrado:', user.id);
+        targetUserId = user.id;
+      } else {
+        console.log('⚠️ [INTENTION] No hay usuario autenticado, usando ID del parámetro:', userId);
+        
+        // Verificar que el usuario existe en la tabla users
+        const { data: userProfile, error: profileError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', userId)
+          .maybeSingle();
+          
+        if (profileError || !userProfile) {
+          console.error('❌ [INTENTION] Usuario no encontrado en base de datos:', userId);
+          throw new Error('Usuario no encontrado');
+        }
+        
+        console.log('✅ [INTENTION] Usuario verificado en base de datos');
       }
 
       const { data, error } = await supabase
         .from('user_intentions')
         .upsert({
-          user_id: user.id, // Usar el ID autenticado
+          user_id: targetUserId,
           intention_type: intentionType,
           activity,
           availability,
@@ -107,21 +127,41 @@ class InterestsService {
     interests: Partial<Omit<UserInterests, 'id' | 'user_id' | 'created_at' | 'updated_at'>>
   ): Promise<UserInterests | null> {
     try {
-      console.log('📝 Updating interests for user:', userId);
+      console.log('📝 [INTERESTS] Updating interests for user:', userId);
       
-      // Obtener el usuario autenticado actual
-      const { data: { user } } = await supabase.auth.getUser();
+      // Intentar obtener el usuario autenticado
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (!user) {
-        throw new Error('Usuario no autenticado');
+      // Usar el ID del usuario autenticado si está disponible, sino usar el parámetro
+      let targetUserId = userId;
+      
+      if (user && !authError) {
+        console.log('🔐 [INTERESTS] Usuario autenticado encontrado:', user.id);
+        targetUserId = user.id;
+      } else {
+        console.log('⚠️ [INTERESTS] No hay usuario autenticado, usando ID del parámetro:', userId);
+        
+        // Verificar que el usuario existe en la tabla users
+        const { data: userProfile, error: profileError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', userId)
+          .maybeSingle();
+          
+        if (profileError || !userProfile) {
+          console.error('❌ [INTERESTS] Usuario no encontrado en base de datos:', userId);
+          throw new Error('Usuario no encontrado');
+        }
+        
+        console.log('✅ [INTERESTS] Usuario verificado en base de datos');
       }
 
-      console.log('🔐 Authenticated user ID:', user.id);
+      console.log('📊 [INTERESTS] Datos a actualizar:', interests);
 
       const { data, error } = await supabase
         .from('user_interests')
         .upsert({
-          user_id: user.id, // Usar el ID autenticado
+          user_id: targetUserId,
           ...interests,
           updated_at: new Date().toISOString(),
         }, {
@@ -131,14 +171,14 @@ class InterestsService {
         .single();
 
       if (error) {
-        console.error('❌ Error updating interests:', error);
+        console.error('❌ [INTERESTS] Error updating interests:', error);
         throw error;
       }
 
-      console.log('✅ Interests updated successfully');
+      console.log('✅ [INTERESTS] Interests updated successfully');
       return data;
     } catch (error) {
-      console.error('Error updating user interests:', error);
+      console.error('💥 [INTERESTS] Error updating user interests:', error);
       throw error;
     }
   }
@@ -186,24 +226,41 @@ class InterestsService {
     preferences: Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>
   ): Promise<UserPreferences | null> {
     try {
-      console.log('📝 Updating preferences for user:', userId);
-      console.log('📝 Preferences data:', preferences);
+      console.log('📝 [PREFERENCES] Updating preferences for user:', userId);
+      console.log('📝 [PREFERENCES] Preferences data:', preferences);
 
-      // Obtener el usuario autenticado actual
-      const { data: { user } } = await supabase.auth.getUser();
+      // Intentar obtener el usuario autenticado
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (!user) {
-        throw new Error('Usuario no autenticado');
+      // Usar el ID del usuario autenticado si está disponible, sino usar el parámetro
+      let targetUserId = userId;
+      
+      if (user && !authError) {
+        console.log('🔐 [PREFERENCES] Usuario autenticado encontrado:', user.id);
+        targetUserId = user.id;
+      } else {
+        console.log('⚠️ [PREFERENCES] No hay usuario autenticado, usando ID del parámetro:', userId);
+        
+        // Verificar que el usuario existe en la tabla users
+        const { data: userProfile, error: profileError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', userId)
+          .maybeSingle();
+          
+        if (profileError || !userProfile) {
+          console.error('❌ [PREFERENCES] Usuario no encontrado en base de datos:', userId);
+          throw new Error('Usuario no encontrado');
+        }
+        
+        console.log('✅ [PREFERENCES] Usuario verificado en base de datos');
       }
 
-      console.log('🔐 Authenticated user ID:', user.id);
-      console.log('📋 Provided user ID:', userId);
-
-      // Usar el ID del usuario autenticado (más seguro)
+      // Usar el ID verificado
       const { data, error } = await supabase
         .from('user_preferences')
         .upsert({
-          user_id: user.id, // Usar el ID autenticado en lugar del parámetro
+          user_id: targetUserId,
           ...preferences,
           updated_at: new Date().toISOString(),
         }, {
@@ -213,14 +270,14 @@ class InterestsService {
         .single();
 
       if (error) {
-        console.error('❌ Error updating user preferences:', error);
+        console.error('❌ [PREFERENCES] Error updating user preferences:', error);
         throw error;
       }
 
-      console.log('✅ Preferences updated successfully:', data);
+      console.log('✅ [PREFERENCES] Preferences updated successfully:', data);
       return data;
     } catch (error) {
-      console.error('Error updating user preferences:', error);
+      console.error('💥 [PREFERENCES] Error updating user preferences:', error);
       throw error;
     }
   }

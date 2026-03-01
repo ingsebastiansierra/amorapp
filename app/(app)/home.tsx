@@ -53,8 +53,13 @@ const AnimatedBubble = ({ user, bubbleSize, borderColor, position, onPress }: an
             }]}>
                 {user.avatar_url ? (
                     <Image
-                        source={{ uri: user.avatar_url }}
+                        source={{ 
+                            uri: user.avatar_url,
+                            cache: 'force-cache',
+                        }}
                         style={styles.bubbleImage}
+                        resizeMode="cover"
+                        fadeDuration={0}
                     />
                 ) : (
                     <View style={styles.bubblePlaceholder}>
@@ -259,10 +264,14 @@ export default function HomeScreen() {
 
             // Transformar datos a formato NearbyUser
             const nearbyUsersData: NearbyUser[] = (usersData || []).map(u => {
+                // Generar avatar HD (1080x1080) de Pravatar
+                const randomNum = Math.floor(Math.random() * 70) + 1;
+                const defaultAvatar = `https://i.pravatar.cc/1080?img=${randomNum}`;
+                
                 return {
                     id: u.id,
                     name: u.name,
-                    avatar_url: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&size=150`,
+                    avatar_url: u.avatar_url || defaultAvatar,
                     bio: null,
                     birth_date: u.birth_date,
                     gender: u.gender,
